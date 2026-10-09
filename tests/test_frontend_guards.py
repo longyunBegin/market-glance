@@ -49,6 +49,23 @@ class FrontendGuardTests(unittest.TestCase):
         self.assertIn("waitForUpdatedQuotes(pendingConfig", self.html)
         self.assertNotIn("element.querySelector('textarea')", self.html)
 
+    def test_desktop_panel_controls_and_theme_preferences_are_persistent(self):
+        self.assertIn('data-layout-toggle="overview"', self.html)
+        self.assertIn('data-layout-toggle="anomalies"', self.html)
+        self.assertIn('id="themeToggle"', self.html)
+        self.assertIn("localStorage.getItem(UI_PREF_KEY)", self.html)
+        self.assertIn("localStorage.setItem(UI_PREF_KEY", self.html)
+        self.assertIn('<option value="light">浅色模式</option>', self.html)
+        self.assertIn('<option value="dark">深色模式</option>', self.html)
+        self.assertIn('<option value="system">系统模式</option>', self.html)
+        self.assertIn("['light','dark','system'].includes(saved.theme)", self.html)
+        self.assertIn("window.matchMedia('(prefers-color-scheme: dark)')", self.html)
+        self.assertIn("function effectiveTheme()", self.html)
+        self.assertIn("systemThemeMedia.addEventListener('change',handleSystemThemeChange)", self.html)
+        self.assertIn('[data-theme="dark"] body', self.html)
+        self.assertIn("main.hide-overview", self.html)
+        self.assertIn("main.hide-anomalies", self.html)
+
 
 if __name__ == "__main__":
     unittest.main()

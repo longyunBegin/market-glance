@@ -7,6 +7,7 @@
 <script src="assets/lightweight-charts.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root { color-scheme: light; }
   body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background: #f4f5f7; color: #1a1a1a; font-size: 14px; }
   header { background: #fff; border-bottom: 1px solid #e2e4e8; padding: 10px 16px; display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 10; }
   header h1 { font-size: 17px; font-weight: 700; white-space: nowrap; }
@@ -20,9 +21,15 @@
   .tape-item.active { background: #e8efff; border-radius: 4px; }
   .tape-item b { font-weight: 700; } .tape-item .pr { color: #333; margin-left: 6px; }
   .up { color: #168447; } .down { color: #c62828; }
-  main { display: grid; grid-template-columns: minmax(230px, .9fr) minmax(230px, .9fr) minmax(0, 1.8fr); gap: 12px; padding: 12px 16px; max-width: 1500px; margin: 0 auto; }
-  @media (max-width: 1120px) { main { grid-template-columns: minmax(220px, 1fr) minmax(220px, 1fr); } main > section:last-child { grid-column: 1 / -1; } }
+  main { display: grid; grid-template-columns: minmax(210px, 250px) minmax(235px, 290px) minmax(0, 1fr); gap: 12px; padding: 12px 16px; max-width: 1500px; margin: 0 auto; }
+  main.hide-overview:not(.hide-anomalies), main.hide-anomalies:not(.hide-overview) { grid-template-columns: minmax(220px, 290px) minmax(0, 1fr); }
+  main.hide-overview.hide-anomalies { grid-template-columns: minmax(0, 1fr); }
+  @media (max-width: 1120px) { main { grid-template-columns: minmax(220px, 1fr) minmax(220px, 1fr); } main:not(.hide-overview):not(.hide-anomalies) > section:last-child { grid-column: 1 / -1; } }
   .mobile-tabs { display: none; }
+  .layout-controls { display: flex; align-items: center; gap: 6px; max-width: 1500px; margin: 10px auto 0; padding: 0 16px; color: #777; font-size: 12px; }
+  .layout-controls button { border: 1px solid #d9dde4; background: #fff; color: #555; border-radius: 5px; padding: 4px 9px; font-size: 12px; cursor: pointer; }
+  .layout-controls button[aria-pressed="true"] { border-color: #9ab8e5; background: #edf4ff; color: #245b9d; }
+  .layout-controls button:focus-visible, .theme-toggle:focus-visible, .gear:focus-visible { outline: 2px solid #1a73e8; outline-offset: 2px; }
   .signal { display: inline-block; margin-left: 8px; padding: 1px 5px; border-radius: 4px; font-size: 10px; font-weight: 600; background: #fff4d6; color: #946200; vertical-align: 1px; }
   .signal.medium { background: #ffedd5; color: #a04b00; }
   .signal.strong { background: #fde8e7; color: #b3261e; }
@@ -74,8 +81,10 @@
   .tfbtn.on { background: #1a73e8; border-color: #1a73e8; color: #fff; }
   footer { text-align: center; color: #999; font-size: 12px; padding: 14px; }
   .err { color: #999; font-size: 12px; }
-  .gear { margin-left: auto; border: 1px solid #ddd; background: #fff; border-radius: 6px; font-size: 15px; padding: 4px 9px; cursor: pointer; }
+  .theme-toggle, .gear { border: 1px solid #ddd; background: #fff; color: #555; border-radius: 6px; font-size: 12px; padding: 5px 9px; cursor: pointer; white-space: nowrap; }
+  .gear { margin-left: auto; font-size: 15px; padding: 4px 9px; }
   .gear:hover { background: #f0f4ff; }
+  .theme-toggle:hover { background: #f0f4ff; }
   .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: none; align-items: center; justify-content: center; z-index: 50; padding: 10px; }
   .modal-bg.open { display: flex; }
   .modal { background: #fff; border-radius: 10px; width: 560px; max-width: 94vw; max-height: 86vh; overflow-y: auto; padding: 18px; }
@@ -100,6 +109,45 @@
   .subbar .ohlc { color: #666; }
   .subbar .cnote { color: #b07b00; margin-left: 10px; }
   .subbar .mato { cursor: pointer; user-select: none; white-space: nowrap; }
+  @media (min-width: 701px) {
+    main.hide-overview [data-panel="overview"] { display: none; }
+    main.hide-anomalies [data-panel="anomalies"] { display: none; }
+  }
+  [data-theme="dark"] { color-scheme: dark; }
+  [data-theme="dark"] body { background: #11151b; color: #e5e9ef; }
+  [data-theme="dark"] header, [data-theme="dark"] .tape, [data-theme="dark"] .panel, [data-theme="dark"] .modal { background: #191e27; border-color: #303744; color: #e5e9ef; }
+  [data-theme="dark"] .tape { border-bottom-color: #303744; }
+  [data-theme="dark"] .tape-item { border-right-color: #303744; }
+  [data-theme="dark"] .tape-item.active, [data-theme="dark"] .row.active { background: #22364f; }
+  [data-theme="dark"] .tape-item .pr, [data-theme="dark"] .row .nm, [data-theme="dark"] .quote-update,
+  [data-theme="dark"] .panel h2, [data-theme="dark"] .grp, [data-theme="dark"] .subbar .ohlc,
+  [data-theme="dark"] footer, [data-theme="dark"] .thr, [data-theme="dark"] .modal .hint { color: #a1aab8; }
+  [data-theme="dark"] .panel h2 .cn { color: #858f9d; }
+  [data-theme="dark"] .row:hover, [data-theme="dark"] .gear:hover, [data-theme="dark"] .theme-toggle:hover { background: #232c3a; }
+  [data-theme="dark"] .layout-controls button, [data-theme="dark"] .theme-toggle, [data-theme="dark"] .gear,
+  [data-theme="dark"] .tfbtn, [data-theme="dark"] .btn { background: #202630; color: #dce2eb; border-color: #3a4350; }
+  [data-theme="dark"] .layout-controls button[aria-pressed="true"], [data-theme="dark"] .tfbtn.on, [data-theme="dark"] .btn.primary { background: #245a91; border-color: #3475b6; color: #fff; }
+  [data-theme="dark"] .cfg-settings, [data-theme="dark"] .cfg-preview { background: #202630; color: #c0c8d4; }
+  [data-theme="dark"] .cfg-preview { border-color: #34485f; }
+  [data-theme="dark"] .cfg-preview h4 { color: #e5e9ef; }
+  [data-theme="dark"] .cfg-grp { border-color: #303744; }
+  [data-theme="dark"] .cfg-ticker-row input, [data-theme="dark"] .cfg-settings input,
+  [data-theme="dark"] .cfg-grp input.gname, [data-theme="dark"] .thr input { background: #12161c; color: #e5e9ef; border-color: #3a4350; }
+  [data-theme="dark"] .cfg-grp .del { background: #2b2022; border-color: #664344; }
+  [data-theme="dark"] .cfg-ticker-row .del { background: #202630; border-color: #3a4350; color: #c0c8d4; }
+  [data-theme="dark"] .cfg-add-ticker { color: #8ab4f8; }
+  [data-theme="dark"] .cfg-notice { background: #1b2a3f; border-color: #2c4564; color: #adcaff; }
+  [data-theme="dark"] .stalebar { background: #342d1c; border-color: #514528; color: #e9c66b; }
+  [data-theme="dark"] .signal { background: #3a301b; color: #e9c66b; }
+  [data-theme="dark"] .signal.medium { background: #3b2d1e; color: #f0b76b; }
+  [data-theme="dark"] .signal.strong { background: #3d2427; color: #ff9d97; }
+  [data-theme="dark"] .up { color: #4bd18b; }
+  [data-theme="dark"] .down { color: #ff7770; }
+  [data-theme="dark"] .modal-bg { background: rgba(0,0,0,.68); }
+  @media (max-width: 700px) {
+    .layout-controls { display: none; }
+    main.hide-overview:not(.hide-anomalies), main.hide-anomalies:not(.hide-overview), main.hide-overview.hide-anomalies { grid-template-columns: minmax(0, 1fr); }
+  }
 </style>
 </head>
 <body>
@@ -107,12 +155,22 @@
   <h1>Market Glance <span style="font-weight:400;color:#888;font-size:13px">盘前哨</span></h1>
   <div class="stage"><span style="color:#999">市场状态</span><span class="dot" id="dot"></span><span id="stage">—</span><span id="countdown" style="color:#999"></span></div>
   <div class="quote-update" id="updated">行情最后更新：—</div>
+  <select class="theme-toggle" id="themeToggle" aria-label="主题模式" title="主题模式">
+    <option value="light">浅色模式</option>
+    <option value="dark">深色模式</option>
+    <option value="system">系统模式</option>
+  </select>
   <button class="gear" id="gear" title="配置观察列表">⚙️</button>
 </header>
 <div class="stalebar" id="stalebar"></div>
 <div class="tape" id="tape" aria-label="市场基准行情"></div>
 <div class="cfg-notice" id="cfgNotice" aria-live="polite" hidden></div>
-<main>
+<nav class="layout-controls" aria-label="桌面面板显示设置">
+  <span>显示面板</span>
+  <button type="button" data-layout-toggle="overview" aria-pressed="true">观察池</button>
+  <button type="button" data-layout-toggle="anomalies" aria-pressed="true">异动</button>
+</nav>
+<main id="dashboardMain">
   <nav class="mobile-tabs" aria-label="看板视图">
     <button type="button" data-panel-tab="overview" class="on" aria-pressed="true">行情</button>
     <button type="button" data-panel-tab="anomalies" aria-pressed="false">异动</button>
@@ -165,6 +223,47 @@ const TF_LABEL = {'5m':'5m · 近2日 · 含盘前盘后', '15m':'15m · 近1月
 const BENCHMARKS = new Set(['SPY','QQQ','DIA','IWM','^NDX','^IXIC','^GSPC','^DJI','^VIX','^TNX','^RUT']);
 const TAPE_BASES = ['SPY','QQQ','DIA'];
 const fmtT = ts => new Date(ts*1000).toLocaleString('zh-CN',{hour12:false,month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+const UI_PREF_KEY = 'market-glance-ui-v1';
+let uiPreferences = (()=>{
+  const defaults={theme:'light',overviewVisible:true,anomaliesVisible:true};
+  try{
+    const saved=JSON.parse(localStorage.getItem(UI_PREF_KEY)||'{}');
+    const theme=['light','dark','system'].includes(saved.theme)?saved.theme:defaults.theme;
+    return {theme,overviewVisible:saved.overviewVisible!==false,anomaliesVisible:saved.anomaliesVisible!==false};
+  }catch(error){return defaults;}
+})();
+const systemThemeMedia=window.matchMedia?window.matchMedia('(prefers-color-scheme: dark)'):null;
+function effectiveTheme(){
+  return uiPreferences.theme==='system'?(systemThemeMedia&&systemThemeMedia.matches?'dark':'light'):uiPreferences.theme;
+}
+function chartPalette(){
+  return effectiveTheme()==='dark'
+    ? {background:'#191e27',text:'#c3cbd6',grid:'#2a313b',up:'#34c980',down:'#f06460',ma20:'#f5b942',ma50:'#78aef5',reference:'#737d8b',volUp:'rgba(52,201,128,.45)',volDown:'rgba(240,100,96,.45)'}
+    : {background:'#ffffff',text:'#555555',grid:'#f0f0f0',up:'#22a355',down:'#d93025',ma20:'#f5a623',ma50:'#4a90d9',reference:'#c9ccd1',volUp:'rgba(34,163,85,.45)',volDown:'rgba(217,48,37,.45)'};
+}
+function saveUiPreferences(){try{localStorage.setItem(UI_PREF_KEY,JSON.stringify(uiPreferences));}catch(error){}}
+function applyUiPreferences(){
+  document.documentElement.dataset.theme=effectiveTheme();
+  const main=$('dashboardMain');
+  main.classList.toggle('hide-overview',!uiPreferences.overviewVisible);
+  main.classList.toggle('hide-anomalies',!uiPreferences.anomaliesVisible);
+  document.querySelectorAll('[data-layout-toggle]').forEach(button=>{
+    const visible=uiPreferences[button.dataset.layoutToggle==='overview'?'overviewVisible':'anomaliesVisible'];
+    button.setAttribute('aria-pressed',String(visible));
+    button.title=(visible?'隐藏':'显示')+button.textContent;
+  });
+  const toggle=$('themeToggle');
+  toggle.value=uiPreferences.theme;
+  const notice=$('cfgNotice');
+  if(!notice.hidden && notice.textContent)setConfigNotice(notice.textContent,notice.dataset.kind||'info');
+  if(chart){
+    const colors=chartPalette();
+    chart.applyOptions({layout:{background:{color:colors.background},textColor:colors.text},grid:{vertLines:{color:colors.grid},horzLines:{color:colors.grid}}});
+    series.applyOptions({upColor:colors.up,downColor:colors.down,wickUpColor:colors.up,wickDownColor:colors.down});
+    ma20.applyOptions({color:colors.ma20}); ma50.applyOptions({color:colors.ma50});
+    if(curBars.length)volSeries.setData(curBars.map(bar=>({time:bar.time,value:bar.volume,color:bar.close>=bar.open?colors.volUp:colors.volDown})));
+  }
+}
 
 async function updateMarketStage(){
   const requestId = ++marketRequestId;
@@ -306,13 +405,14 @@ async function showChart(symbol, timeframe, force=false){
     const bars=data.candles.map(c=>({time:c[0],open:c[1],high:c[2],low:c[3],close:c[4],volume:c[5]||0}));
     if(!bars.length) throw new Error('当前周期没有可用 K 线');
     series.setData(bars);
-    volSeries.setData(bars.map(b=>({time:b.time,value:b.volume,color:b.close>=b.open?'rgba(34,163,85,.45)':'rgba(217,48,37,.45)'})));
+    const colors=chartPalette();
+    volSeries.setData(bars.map(b=>({time:b.time,value:b.volume,color:b.close>=b.open?colors.volUp:colors.volDown})));
     const showMA=$('mato').checked;
     ma20.setData(sma(bars,20)); ma50.setData(sma(bars,50));
     ma20.applyOptions({visible:showMA}); ma50.applyOptions({visible:showMA});
     if(prevLine){series.removePriceLine(prevLine);prevLine=null;}
     const quote=quotes.find(item=>item.symbol===symbol);
-    if(quote && quote.prev_close){prevLine=series.createPriceLine({price:quote.prev_close,color:'#c9ccd1',lineWidth:1,lineStyle:LightweightCharts.LineStyle.Dashed,title:'前收'});}
+    if(quote && quote.prev_close){prevLine=series.createPriceLine({price:quote.prev_close,color:colors.reference,lineWidth:1,lineStyle:LightweightCharts.LineStyle.Dashed,title:'前收'});}
     chart.applyOptions({timeScale:{timeVisible:timeframe!=='1d'}});
     chart.timeScale().fitContent(); curBars=bars;
     $('csym').textContent=symbol; $('tflabel').textContent=TF_LABEL[timeframe]||timeframe;
@@ -359,13 +459,14 @@ async function refresh(){
 
 if(typeof LightweightCharts!=='undefined'){
   chartOk=true;
-  chart=LightweightCharts.createChart($('chart'),{layout:{background:{color:'#fff'},textColor:'#555'},grid:{vertLines:{color:'#f0f0f0'},horzLines:{color:'#f0f0f0'}},timeScale:{timeVisible:true}});
-  series=chart.addCandlestickSeries({upColor:'#22a355',downColor:'#d93025',wickUpColor:'#22a355',wickDownColor:'#d93025',borderVisible:false});
+  const colors=chartPalette();
+  chart=LightweightCharts.createChart($('chart'),{layout:{background:{color:colors.background},textColor:colors.text},grid:{vertLines:{color:colors.grid},horzLines:{color:colors.grid}},timeScale:{timeVisible:true}});
+  series=chart.addCandlestickSeries({upColor:colors.up,downColor:colors.down,wickUpColor:colors.up,wickDownColor:colors.down,borderVisible:false});
   volSeries=chart.addHistogramSeries({priceFormat:{type:'volume'},priceScaleId:''});
   chart.priceScale('').applyOptions({scaleMargins:{top:.84,bottom:0}});
   chart.priceScale('right').applyOptions({scaleMargins:{top:.06,bottom:.18}});
-  ma20=chart.addLineSeries({color:'#f5a623',lineWidth:1,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
-  ma50=chart.addLineSeries({color:'#4a90d9',lineWidth:1,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
+  ma20=chart.addLineSeries({color:colors.ma20,lineWidth:1,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
+  ma50=chart.addLineSeries({color:colors.ma50,lineWidth:1,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
   if(window.ResizeObserver) new ResizeObserver(entries=>{const rect=entries[0].contentRect;chart.applyOptions({width:rect.width,height:rect.height});}).observe($('chart'));
   const fmtVol=n=>n>=1e8?(n/1e8).toFixed(2)+'亿':(n>=1e4?(n/1e4).toFixed(1)+'万':''+n);
   chart.subscribeCrosshairMove(param=>{
@@ -383,6 +484,26 @@ $('thr').addEventListener('input',renderDashboard);
 document.querySelectorAll('.tfbtn[data-tf]').forEach(button=>{button.onclick=()=>showChart(curSym,button.dataset.tf);});
 $('refreshChart').onclick=()=>showChart(curSym,curTf,true);
 document.querySelectorAll('[data-panel-tab]').forEach(button=>{button.onclick=()=>activateMobilePanel(button.dataset.panelTab);});
+document.querySelectorAll('[data-layout-toggle]').forEach(button=>{
+  button.onclick=()=>{
+    const key=button.dataset.layoutToggle==='overview'?'overviewVisible':'anomaliesVisible';
+    uiPreferences[key]=!uiPreferences[key]; saveUiPreferences(); applyUiPreferences();
+  };
+});
+$('themeToggle').onchange=()=>{
+  uiPreferences.theme=$('themeToggle').value; saveUiPreferences(); applyUiPreferences();
+  if(chartOk)showChart(curSym,curTf);
+};
+function handleSystemThemeChange(){
+  if(uiPreferences.theme!=='system')return;
+  applyUiPreferences();
+  if(chartOk)showChart(curSym,curTf);
+}
+if(systemThemeMedia){
+  if(systemThemeMedia.addEventListener)systemThemeMedia.addEventListener('change',handleSystemThemeChange);
+  else if(systemThemeMedia.addListener)systemThemeMedia.addListener(handleSystemThemeChange);
+}
+applyUiPreferences();
 updateMarketStage(); setInterval(updateMarketStage,30000);
 refresh().then(()=>showChart(quotes.length?quotes[0].symbol:'SPY','5m'));
 setInterval(refresh,60000);
@@ -477,8 +598,9 @@ function showConfigPreview(draft){
 }
 function setConfigNotice(text,kind='info'){
   const notice=$('cfgNotice'); notice.textContent=text; notice.dataset.kind=kind; notice.hidden=false;
-  notice.style.background=kind==='ok'?'#f0f7f2':(kind==='warn'?'#fff8e6':'#f8faff');
-  notice.style.color=kind==='ok'?'#28633f':(kind==='warn'?'#856000':'#315a91');
+  const dark=effectiveTheme()==='dark';
+  notice.style.background=dark?(kind==='ok'?'#1f382a':(kind==='warn'?'#342d1c':'#1b2a3f')):(kind==='ok'?'#f0f7f2':(kind==='warn'?'#fff8e6':'#f8faff'));
+  notice.style.color=dark?(kind==='ok'?'#9addb0':(kind==='warn'?'#e9c66b':'#adcaff')):(kind==='ok'?'#28633f':(kind==='warn'?'#856000':'#315a91'));
 }
 async function waitForUpdatedQuotes(config,baselineUpdated,requestedAt){
   const expected=config.groups.flatMap(group=>group.tickers.map(ticker=>ticker.symbol));
