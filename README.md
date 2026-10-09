@@ -74,13 +74,12 @@ TUNNEL_CMD="ssh -N -T -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o Exit
 
 ## 配置
 
-`config.json` 是每台机器自己的配置，已加入 Git 忽略规则；仓库只保存 `config.example.json`。可在观察池标题旁点“新增”，直接进入分组与代码编辑；配置窗口会按步骤提示创建分组、填写代码，并在保存前校验重复/无效代码、预览差异。右上角齿轮用于调整异动阈值、抓取间隔和行情数据源。观察池保存后页面会持续显示更新状态，直到新行情快照实际到达。
+`config.json` 是每台机器自己的配置，已加入 Git 忽略规则；仓库只保存 `config.example.json`。可在观察池标题旁点“新增”，直接进入分组与代码编辑；配置窗口会按步骤提示创建分组、填写代码，并在保存前校验重复/无效代码、预览差异。右上角齿轮用于调整异动阈值和抓取间隔。行情源按代码格式自动路由，行情列表会标出每个代码本轮使用的来源。观察池保存后页面会持续显示更新状态，直到新行情快照实际到达。
 
 ```json
 {
   "anomaly_threshold_pct": 3.0,
   "fetch_interval_secs": 300,
-  "market_data_provider": "yahoo",
   "www_port": 8090,
   "groups": [
     {"name": "观察池", "tickers": [{"name": "显示名", "symbol": "AAPL"}]}
@@ -89,10 +88,10 @@ TUNNEL_CMD="ssh -N -T -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o Exit
 ```
 
 - `anomaly_threshold_pct`：异动区阈值，范围 `0.1`～`50`。
-- `market_data_provider`：`yahoo`（默认）或 `alpaca_iex`。页面设置也可切换；更换数据源会触发后台抓取。
+- 行情源自动路由：普通字母/数字美股代码（如 `AAPL`）使用 Alpaca IEX；指数代码（如 `^NDX`）及含市场后缀或其他标点的代码（如 `SIVE.ST`）使用 Yahoo Finance。旧配置中的 `market_data_provider` 字段会被忽略。
 - `fetch_interval_secs`：实际行情抓取间隔，范围 `60`～`86400` 秒；timer 每分钟唤醒一次，脚本依据该值决定是否访问行情源。
 - `www_port`：网页服务端口，范围 `1024`～`65535`。若手动修改端口，需重启网页服务：`sudo systemctl restart market-glance-www.service`。
-- `symbol` 使用 Yahoo Finance 代码时可填美股、海外股票或指数；Alpaca IEX 仅适用于其支持的美国股票代码，非美股/指数可能没有数据。
+- Alpaca IEX 仅适用于其支持的美国股票代码，且数据为 IEX feed、不是 SIP 全市场汇总；路由到 Alpaca 的代码需要有效凭据。Yahoo Finance 使用非官方接口。
 
 使用 Alpaca IEX 前，先在服务器上创建仅 root 可读的凭据文件；不要把 API 密钥放进 `config.json` 或提交到 Git：
 
@@ -108,7 +107,7 @@ APCA_API_KEY_ID=your_key_id
 APCA_API_SECRET_KEY=your_secret_key
 ```
 
-安装/更新 systemd 单元后，执行以下命令让网页服务和抓取服务重新读取凭据，然后在页面设置中选择 **Alpaca IEX**；也可以在 `config.json` 将 `market_data_provider` 设为 `alpaca_iex`：
+安装/更新 systemd 单元后，执行以下命令让网页服务和抓取服务重新读取凭据；符合格式的普通美股代码将自动使用 **Alpaca IEX**，无需手动选择数据源：
 
 ```bash
 sudo systemctl daemon-reload
@@ -126,7 +125,7 @@ python3 fetch.py --force
 
 ## 数据说明
 
-- 常规时段内的涨跌幅以实时价对最近完整常规收盘价计算；盘前、盘后及休市期间保持最近完整交易日的收盘价对前一交易日收盘价变化，不会因跨夜、周末或假日归零。盘前/盘后价格如有显示，会标出扩展时段，并另列其相对最近常规收盘价的变化。计算使用日线收盘记录，以覆盖长周末和常规假日；Alpaca IEX 最新价格取最新 IEX 成交，K 线和收盘基准也仅基于 IEX 数据。
+- 常规时段内的涨跌幅以实时价对最近完整常规收盘价计算；盘前、盘后及休市期间保持最近完整交易日的收盘价对前一交易日收盘价变化，不会因跨夜、周末或假日归零。盘前/盘后价格如有显示，会标出扩展时段，并另列其相对最近常规收盘价的变化。每个代码的现价、涨跌基准和 K 线均来自同一行情源；Alpaca IEX 的最新价格取最新 IEX 成交，K 线和收盘基准也仅基于 IEX 数据。请求失败时仅复用同一来源的旧报价并标记过期，不会静默切换数据源。
 - Yahoo 对突发请求敏感；抓取脚本使用 5 秒 pacing，并在 429 时退避重试。
 - IEX 是单一交易所行情，成交量/报价可能少于 SIP 汇总；标普或纳指等指数符号不属于股票 IEX 行情。
 - 15 分钟 K 线缓存 15 分钟，日线缓存 1 小时；5 分钟 K 线由定时抓取任务更新，浏览器每 30 秒检查一次文件。

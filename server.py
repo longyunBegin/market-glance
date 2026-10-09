@@ -19,7 +19,7 @@ DATA = os.path.join(BASE, "data")
 KL_DIR = os.path.join(DATA, "klines")
 
 sys.path.insert(0, BASE)
-from config_model import load_config, validate_config  # noqa: E402
+from config_model import load_config, provider_for_symbol, validate_config  # noqa: E402
 from fetch import fetch_candles, kline_cache_path  # noqa: E402
 from market_calendar import market_status  # noqa: E402
 
@@ -112,7 +112,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return
 
         config = load_config(CONFIG)
-        provider = config["market_data_provider"]
+        provider = provider_for_symbol(symbol)
         interval, yahoo_range, ttl = TF_MAP[timeframe]
         path = kline_cache_path(KL_DIR, symbol, timeframe, provider)
 
@@ -193,7 +193,6 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return
 
         groups_changed = normalized["groups"] != current["groups"]
-        provider_changed = normalized["market_data_provider"] != current["market_data_provider"]
         try:
             if os.path.exists(CONFIG):
                 shutil.copy2(CONFIG, CONFIG + ".bak")
@@ -202,7 +201,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self._json({"ok": False, "error": "写入配置失败：%s" % str(exc)[:120]}, 500)
             return
 
-        if groups_changed or provider_changed:
+        if groups_changed:
             try:
                 subprocess.Popen([sys.executable, FETCH, "--force"],
                                  stdout=subprocess.DEVNULL,
@@ -213,8 +212,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self._json({"ok": True,
                     "tickers": sum(len(group["tickers"]) for group in normalized["groups"]),
                     "fetch_interval_secs": normalized["fetch_interval_secs"],
-                    "groups_changed": groups_changed,
-                    "provider_changed": provider_changed})
+                    "groups_changed": groups_changed})
 
 
 def main():

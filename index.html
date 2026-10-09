@@ -75,6 +75,7 @@
   .tape-item.active { background: #fff; border-color: #dbe5f3; box-shadow: 0 2px 7px rgba(32,54,86,.05); }
   .tape-item b { color: #25354a; font-size: 11px; font-weight: 700; letter-spacing: .015em; }
   .tape-item .pr { color: #36455a; font: 600 11px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; }
+  .source { display: inline-block; padding: 1px 4px; border: 1px solid var(--line); border-radius: 4px; color: #8290a1; font-size: 8px; font-weight: 600; line-height: 1.35; white-space: nowrap; vertical-align: 1px; }
   .up { color: var(--green); } .down { color: var(--red); }
   .quote-session { margin-left: 4px; padding: 0 4px; border: 1px solid #ece6d5; border-radius: 4px; color: #8a6b2f; font-size: 8px; font-weight: 650; vertical-align: 1px; }
   .row .qt .ext-c { display: block; color: var(--muted); font-size: 9px; white-space: nowrap; }
@@ -131,6 +132,7 @@
   .row.stale { opacity: .63; }
   .row .sym { color: #25354a; font-size: 12px; font-weight: 720; letter-spacing: .01em; overflow-wrap: anywhere; }
   .row .nm { margin-left: 6px; color: #8a96a5; font-size: 10px; overflow-wrap: anywhere; }
+  .row .source { margin-left: 6px; }
   .row .st { margin-left: 6px; padding: 2px 5px; border-radius: 5px; background: #edf0f5; color: #758195; font-size: 9px; font-weight: 650; vertical-align: 1px; }
   .row .st.pending { background: #fff5df; color: #926a21; }
   .row .qt { flex: 0 0 auto; text-align: right; font-variant-numeric: tabular-nums; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; line-height: 1.45; }
@@ -184,6 +186,7 @@
   .cfg-add-group-row { margin: 0 0 10px; }
   .cfg-settings { display: flex; flex-wrap: wrap; gap: 10px 14px; margin-bottom: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 11px; background: #f7f9fc; color: #657286; font-size: 11px; }
   .cfg-settings label { display: flex; align-items: center; gap: 6px; }
+  .cfg-settings .route-hint { flex: 1 1 100%; color: #53647b; line-height: 1.55; }
   .cfg-settings input { width: 96px; }
   .cfg-settings select { width: auto; max-width: 190px; }
   .cfg-grp { margin-bottom: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 11px; background: #fff; }
@@ -368,7 +371,7 @@
     <div id="chart" aria-live="polite" aria-busy="false"></div>
   </section>
 </main>
-  <footer id="footer">数据源：Yahoo Finance（非官方接口，延迟约 1～3 分钟）· 抓取间隔按配置执行 · 交易日按 NYSE 常规假日规则估算</footer>
+  <footer id="footer">按代码自动路由：普通美股代码使用 Alpaca IEX；指数和带市场后缀代码使用 Yahoo Finance · 涨跌幅仅使用同源现价与收盘基准</footer>
 <div class="modal-bg" id="cfgBg">
   <div class="modal">
     <h3>⚙️ 看板配置</h3>
@@ -378,19 +381,19 @@
       <button type="button" role="tab" data-cfg-tab="settings" aria-selected="false">行情与异动设置</button>
     </div>
     <section class="cfg-pane" data-cfg-pane="watchlist" hidden>
-      <div class="cfg-guide"><strong>新增观察代码</strong><p>每个分组可以放多个代码；已有分组可直接点“添加代码”。显示名可不填，默认使用行情代码。</p>
-        <ol class="cfg-steps"><li><b>1</b><span>添加分组并命名</span></li><li><b>2</b><span>填写代码，如 AAPL</span></li><li><b>3</b><span>预览后确认保存</span></li></ol>
+      <div class="cfg-guide"><strong>新增观察代码</strong><p>每个分组可以放多个代码；已有分组可直接点“添加代码”。显示名可不填，默认使用行情代码。数据源按代码格式自动选择。</p>
+        <ol class="cfg-steps"><li><b>1</b><span>添加分组并命名</span></li><li><b>2</b><span>填写代码，如 AAPL、SIVE.ST 或 ^NDX</span></li><li><b>3</b><span>预览后确认保存</span></li></ol>
       </div>
       <div class="mrow cfg-add-group-row"><button class="btn primary" id="cfgAdd" type="button">＋ 添加分组</button></div>
       <div id="cfgGroups"></div>
     </section>
     <section class="cfg-pane" data-cfg-pane="settings" hidden>
       <div class="cfg-settings">
-        <label>行情数据源 <select id="cfgProvider"><option value="yahoo">Yahoo Finance</option><option value="alpaca_iex">Alpaca IEX</option></select></label>
+        <div class="route-hint">行情源按代码自动路由：普通美股代码使用 Alpaca IEX；指数代码（如 ^NDX）和带市场后缀的代码（如 SIVE.ST）使用 Yahoo Finance。列表会显示每个标的的实际来源。</div>
         <label>异动阈值 (%) <input id="cfgThreshold" type="number" min="0.1" max="50" step="0.1"></label>
         <label>抓取间隔 (秒) <input id="cfgInterval" type="number" min="60" max="86400" step="60"></label>
       </div>
-      <div class="hint">Alpaca IEX 仅提供 IEX 交易所的美股成交与 K 线，不是全市场 SIP 汇总；需在服务器安全配置 APCA_API_KEY_ID / APCA_API_SECRET_KEY。</div>
+      <div class="hint">Alpaca IEX 仅提供 IEX 交易所的美股成交与 K 线，不是全市场 SIP 汇总；普通美股代码需要在服务器安全配置 APCA_API_KEY_ID / APCA_API_SECRET_KEY。来源请求失败时仅保留同一来源的旧值并标记过期。</div>
     </section>
     <div class="mrow">
       <button class="btn primary" id="cfgSave">预览变更</button>
@@ -475,6 +478,9 @@ function formatPercent(value){
   const number=Number(value);
   return (number>0?'+':'')+number.toFixed(2)+'%';
 }
+function providerLabel(provider){
+  return provider==='alpaca_iex'?'Alpaca IEX':(provider==='yahoo'?'Yahoo Finance':'来源待定');
+}
 function quoteSessionLabel(q){
   return q.price_session==='pre'?'盘前价':(q.price_session==='after'?'盘后价':'');
 }
@@ -486,14 +492,16 @@ function rowElement(q, anomaly=false, threshold=3){
   const identity = document.createElement('div');
   const symbol = document.createElement('span'); symbol.className = 'sym'; symbol.textContent = q.symbol;
   const name = document.createElement('span'); name.className = 'nm'; name.textContent = q.name || '';
-  identity.append(symbol, name);
+  const source = document.createElement('span'); source.className = 'source';
+  source.textContent = providerLabel(q.provider); source.title = '该代码本次行情使用的数据源';
+  identity.append(symbol, name, source);
   if(anomaly){
     const ratio=Math.abs(Number(change)||0)/Math.max(.1,threshold);
     const level=ratio>=3?'strong':(ratio>=2?'medium':'');
     const signal=document.createElement('span'); signal.className='signal'+(level?' '+level:'');
     signal.textContent=ratio>=3?'强':(ratio>=2?'中':'轻'); identity.appendChild(signal);
   }
-  if(q.stale){ const stale = document.createElement('span'); stale.className = 'st'; stale.textContent = '旧'; identity.appendChild(stale); }
+  if(q.stale){ const stale = document.createElement('span'); stale.className = 'st'; stale.textContent = q.price==null?'失败':'旧'; if(q.error)stale.title=q.error; identity.appendChild(stale); }
   if(q.pending){ const pending = document.createElement('span'); pending.className = 'st pending'; pending.textContent = '待更新'; identity.appendChild(pending); }
   const values = document.createElement('div'); values.className = 'qt';
   const price = document.createElement('div'); price.className = 'p'; price.textContent = q.price == null ? '—' : String(q.price);
@@ -516,12 +524,13 @@ function renderTape(tapeQuotes){
   tapeQuotes.forEach(q=>{
     const item = document.createElement('span'); item.className = 'tape-item'+(q.symbol===curSym?' active':''); item.dataset.sym = q.symbol;
     const symbol = document.createElement('b'); symbol.textContent = q.symbol;
+    const source = document.createElement('span'); source.className = 'source'; source.textContent = providerLabel(q.provider);
     const price = document.createElement('span'); price.className = 'pr'; price.textContent = q.price == null ? '—' : String(q.price);
     const sessionLabel=quoteSessionLabel(q);
     const change = document.createElement('span');
     change.className = q.chg_pct>0?'up':(q.chg_pct<0?'down':'');
     change.textContent = (sessionLabel?'收盘 ':'')+formatPercent(q.chg_pct);
-    item.append(symbol, price);
+    item.append(symbol, source, price);
     if(sessionLabel){const tag=document.createElement('span');tag.className='quote-session';tag.textContent=sessionLabel;item.appendChild(tag);}
     item.append(document.createTextNode(' '), change);
     if(sessionLabel&&q.extended_chg_pct!=null){
@@ -542,7 +551,7 @@ function dashboardQuotes(){
     const quote=bySymbol.get(ticker.symbol);
     return quote
       ? {...quote,name:ticker.name||quote.name||ticker.symbol,group:group.name}
-      : {symbol:ticker.symbol,name:ticker.name||ticker.symbol,group:group.name,price:null,chg_pct:null,pending:true};
+      : {symbol:ticker.symbol,name:ticker.name||ticker.symbol,group:group.name,provider:ticker.provider,price:null,chg_pct:null,pending:true};
   }));
 }
 function ensureSelectedSymbol(){
@@ -692,7 +701,7 @@ function bindClicks(){
 function syncChartHeader(symbol){
   const quote=dashboardQuotes().find(item=>item.symbol===symbol);
   $('csym').textContent=symbol||'—';
-  $('cname').textContent=quote&&quote.name?quote.name:'';
+  $('cname').textContent=quote?[quote.name,providerLabel(quote.provider)].filter(Boolean).join(' · '):'';
   if(quote){
     const change=quote.chg_pct;
     const price=quote.price==null?'—':String(quote.price);
@@ -713,9 +722,7 @@ async function refresh(){
       if(configResponse.ok){
         const config=await configResponse.json();
         if(Array.isArray(config.groups))configuredGroups=config.groups;
-        $('footer').textContent=config.market_data_provider==='alpaca_iex'
-          ?'数据源：Alpaca IEX（仅 IEX 交易所美股数据；非 SIP 全市场汇总）· 抓取间隔按配置执行 · 交易日按 NYSE 常规假日规则估算'
-          :'数据源：Yahoo Finance（非官方接口，延迟约 1～3 分钟）· 抓取间隔按配置执行 · 交易日按 NYSE 常规假日规则估算';
+        $('footer').textContent='按代码自动路由：普通美股代码使用 Alpaca IEX（非 SIP 全市场汇总）；指数和带市场后缀代码使用 Yahoo Finance · 涨跌幅仅使用同源现价与收盘基准 · 抓取间隔按配置执行';
       }
     }catch(error){}
     const response=await fetch('data/quotes.json?_='+Date.now(),{cache:'no-store'});
@@ -833,7 +840,6 @@ async function openCfg(tabName='settings'){
     ensureSelectedSymbol(); renderDashboard(); syncChartHeader(curSym);
     $('cfgThreshold').value=config.anomaly_threshold_pct;
     $('cfgInterval').value=config.fetch_interval_secs;
-    $('cfgProvider').value=config.market_data_provider||'yahoo';
     const fragment=document.createDocumentFragment();
     config.groups.forEach(group=>fragment.appendChild(makeCfgGroup(group)));
     $('cfgGroups').replaceChildren(fragment); setConfigEditing(true); setConfigTab(tabName); $('cfgBg').classList.add('open');
@@ -864,8 +870,7 @@ function collectCfgDraft(){
   if(!groups.length)throw new Error('至少需要一个分组');
   if(groups.length>10)throw new Error('最多设置 10 个分组');
   if(total>60)throw new Error('代码总数最多 60 个');
-  return {groups,anomaly_threshold_pct:threshold,fetch_interval_secs:interval,
-    market_data_provider:$('cfgProvider').value};
+  return {groups,anomaly_threshold_pct:threshold,fetch_interval_secs:interval};
 }
 function flattenTickers(groups){
   const map=new Map();
@@ -874,7 +879,7 @@ function flattenTickers(groups){
 }
 function addPreviewLine(text){const line=document.createElement('div');line.className='cfg-preview-line';line.textContent=text;$('cfgPreviewDetails').appendChild(line);}
 function setConfigEditing(enabled){
-  document.querySelectorAll('#cfgGroups input,#cfgGroups button,#cfgThreshold,#cfgInterval,#cfgProvider,#cfgAdd,#cfgSave').forEach(element=>{element.disabled=!enabled;});
+  document.querySelectorAll('#cfgGroups input,#cfgGroups button,#cfgThreshold,#cfgInterval,#cfgAdd,#cfgSave').forEach(element=>{element.disabled=!enabled;});
 }
 function showConfigPreview(draft){
   pendingConfig=draft; const before=flattenTickers(originalConfig.groups), after=flattenTickers(draft.groups);
@@ -885,11 +890,10 @@ function showConfigPreview(draft){
   addPreviewLine('将保存 '+after.size+' 个代码、'+draft.groups.length+' 个分组。');
   if(draft.anomaly_threshold_pct!==originalConfig.anomaly_threshold_pct)addPreviewLine('异动阈值：'+originalConfig.anomaly_threshold_pct+'% → '+draft.anomaly_threshold_pct+'%');
   if(draft.fetch_interval_secs!==originalConfig.fetch_interval_secs)addPreviewLine('抓取间隔：'+originalConfig.fetch_interval_secs+' 秒 → '+draft.fetch_interval_secs+' 秒');
-  if(draft.market_data_provider!==originalConfig.market_data_provider)addPreviewLine('行情数据源：'+(originalConfig.market_data_provider==='alpaca_iex'?'Alpaca IEX':'Yahoo Finance')+' → '+(draft.market_data_provider==='alpaca_iex'?'Alpaca IEX':'Yahoo Finance'));
   if(added.length)addPreviewLine('新增：'+added.join('、'));
   if(removed.length)addPreviewLine('移除：'+removed.join('、'));
   if(changed.length)addPreviewLine('名称或分组变更：'+changed.map(symbol=>symbol+'（'+before.get(symbol).group+' → '+after.get(symbol).group+'；'+before.get(symbol).name+' → '+after.get(symbol).name+'）').join('；'));
-  if(!added.length&&!removed.length&&!changed.length&&draft.anomaly_threshold_pct===originalConfig.anomaly_threshold_pct&&draft.fetch_interval_secs===originalConfig.fetch_interval_secs&&draft.market_data_provider===originalConfig.market_data_provider)addPreviewLine('与当前配置相同，没有内容变更。');
+  if(!added.length&&!removed.length&&!changed.length&&draft.anomaly_threshold_pct===originalConfig.anomaly_threshold_pct&&draft.fetch_interval_secs===originalConfig.fetch_interval_secs)addPreviewLine('与当前配置相同，没有内容变更。');
   $('cfgPreview').hidden=false; setConfigEditing(false);
 }
 function setConfigNotice(text,kind='info'){
@@ -932,12 +936,7 @@ async function saveConfig(){
     configuredGroups=pendingConfig.groups;
     ensureSelectedSymbol(); renderDashboard(); syncChartHeader(curSym);
     $('thr').value=pendingConfig.anomaly_threshold_pct;
-    if(result.provider_changed){
-      klCache.clear();
-      const note='行情数据源已切换，后台正在按新数据源更新；Alpaca IEX 不包含非美股或指数的 SIP 汇总数据。';
-      message.textContent=note; message.className='cfg-msg ok'; setConfigNotice(note,'ok');
-      refresh(); setTimeout(closeCfg,900);
-    }else if(result.groups_changed){
+    if(result.groups_changed){
       const count=pendingConfig.groups.reduce((sum,group)=>sum+group.tickers.length,0);
       const pendingMessage='配置已保存，正在获取 '+count+' 个代码的新行情…';
       message.textContent=pendingMessage; message.className='cfg-msg'; setConfigNotice(pendingMessage);

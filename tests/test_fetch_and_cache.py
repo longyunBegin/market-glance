@@ -1,4 +1,5 @@
 import os
+import json
 import tempfile
 import unittest
 from datetime import datetime, timezone
@@ -36,6 +37,59 @@ class KlineCacheTests(unittest.TestCase):
         alpaca = fetch.kline_cache_path("/tmp/klines", "AAPL", "5m", "alpaca_iex")
         self.assertEqual(yahoo, "/tmp/klines/AAPL.json")
         self.assertEqual(alpaca, "/tmp/klines/alpaca_iex/AAPL.json")
+
+
+class StaleQuoteTests(unittest.TestCase):
+    def test_same_provider_quote_is_retained_and_marked_stale(self):
+        previous = {"symbol": "AAPL", "price": 100, "provider": "alpaca_iex",
+                    "last_success_at": 500}
+        quote = fetch._stale_quote(previous, "AAPL", "Apple", "Watch", "alpaca_iex", 600, "timeout")
+        self.assertEqual(quote["price"], 100)
+        self.assertTrue(quote["stale"])
+        self.assertEqual(quote["stale_since"], 600)
+        self.assertEqual(quote["provider"], "alpaca_iex")
+
+    def test_other_provider_quote_is_not_reused(self):
+        previous = {"symbol": "SIVE.ST", "price": 100, "provider": "alpaca_iex"}
+        quote = fetch._stale_quote(previous, "SIVE.ST", "SIVE", "Watch", "yahoo", 600, "timeout")
+        self.assertIsNone(quote["price"])
+        self.assertEqual(quote["provider"], "yahoo")
+        self.assertTrue(quote["stale"])
+        self.assertEqual(quote["error"], "timeout")
+
+
+class MixedProviderFetchTests(unittest.TestCase):
+    def test_fetch_loop_routes_each_symbol_and_requests_only_alpaca_symbols(self):
+        with tempfile.TemporaryDirectory() as directory:
+            config = {
+                "anomaly_threshold_pct": 3.0,
+                "fetch_interval_secs": 300,
+                "groups": [{"name": "Watch", "tickers": [
+                    {"symbol": "AAPL", "name": "Apple"},
+                    {"symbol": "SIVE.ST", "name": "SIVE"},
+                    {"symbol": "^NDX", "name": "Nasdaq 100"},
+                ]}],
+            }
+            with open(os.path.join(directory, "config.json"), "w", encoding="utf-8") as stream:
+                json.dump(config, stream)
+
+            def fake_fetch_one(symbol, name, group, provider, **kwargs):
+                return ({"symbol": symbol, "name": name, "group": group,
+                         "price": 100.0, "provider": provider}, [[1, 1, 1, 1, 1, 1]])
+
+            with patch.object(fetch, "BASE", directory), \
+                    patch("fetch.fetch_latest_trades", return_value={"AAPL": {"p": 100}}) as latest, \
+                    patch("fetch.fetch_one", side_effect=fake_fetch_one) as fetch_one, \
+                    patch("fetch.time.sleep"), \
+                    patch("fetch.time.time", return_value=1000):
+                fetch.main(["--force"])
+
+            self.assertEqual(latest.call_args.args[0], ["AAPL"])
+            routed = {call.args[0]: call.kwargs["provider"] for call in fetch_one.call_args_list}
+            self.assertEqual(routed, {"AAPL": "alpaca_iex", "SIVE.ST": "yahoo", "^NDX": "yahoo"})
+            with open(os.path.join(directory, "data", "quotes.json"), encoding="utf-8") as stream:
+                snapshot = json.load(stream)
+            self.assertEqual({quote["symbol"]: quote["provider"] for quote in snapshot["quotes"]}, routed)
 
 
 class AlpacaDataTests(unittest.TestCase):

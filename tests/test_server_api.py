@@ -64,7 +64,7 @@ class ServerApiTests(unittest.TestCase):
         self.assertIn("class", status)
         self.assertIn("countdown", status)
 
-    def test_provider_change_is_saved_and_starts_fetch(self):
+    def test_legacy_global_provider_is_ignored_and_ticker_sources_are_derived(self):
         with urlopen(self.base_url + "/api/config") as response:
             config = json.load(response)
         config["market_data_provider"] = "alpaca_iex"
@@ -73,25 +73,38 @@ class ServerApiTests(unittest.TestCase):
         with patch.object(server.subprocess, "Popen") as spawn:
             with urlopen(request) as response:
                 saved = json.load(response)
-        self.assertTrue(saved["provider_changed"])
-        self.assertTrue(spawn.called)
+        self.assertTrue(saved["ok"])
+        self.assertFalse(spawn.called)
         with urlopen(self.base_url + "/api/config") as response:
             updated = json.load(response)
-        self.assertEqual(updated["market_data_provider"], "alpaca_iex")
+        self.assertNotIn("market_data_provider", updated)
+        sources = {ticker["symbol"]: ticker["provider"] for group in updated["groups"]
+                   for ticker in group["tickers"]}
+        self.assertEqual(sources["MRVL"], "alpaca_iex")
+        self.assertEqual(sources["SIVE.ST"], "yahoo")
+        self.assertEqual(sources["^NDX"], "yahoo")
 
-    def test_klines_use_selected_provider(self):
+    def test_klines_route_by_symbol(self):
         config = json.loads(self.config_path.read_text(encoding="utf-8"))
-        config["market_data_provider"] = "alpaca_iex"
+        config["market_data_provider"] = "yahoo"
         self.config_path.write_text(json.dumps(config), encoding="utf-8")
         candles = [[1791479400, 10.0, 11.0, 9.0, 10.5, 100]]
         with tempfile.TemporaryDirectory() as data_dir:
             with patch.object(server, "KL_DIR", data_dir), \
                     patch.object(server, "fetch_candles", return_value=(candles, {})) as fetch:
-                with urlopen(self.base_url + "/api/klines?symbol=AAPL&tf=15m&refresh=1") as response:
+                with urlopen(self.base_url + "/api/klines?symbol=MRVL&tf=15m&refresh=1") as response:
                     payload = json.load(response)
         self.assertEqual(fetch.call_args.kwargs["provider"], "alpaca_iex")
         self.assertEqual(payload["provider"], "alpaca_iex")
         self.assertEqual(payload["candles"], candles)
+
+        with tempfile.TemporaryDirectory() as data_dir:
+            with patch.object(server, "KL_DIR", data_dir), \
+                    patch.object(server, "fetch_candles", return_value=(candles, {})) as fetch:
+                with urlopen(self.base_url + "/api/klines?symbol=SIVE.ST&tf=15m&refresh=1") as response:
+                    payload = json.load(response)
+        self.assertEqual(fetch.call_args.kwargs["provider"], "yahoo")
+        self.assertEqual(payload["provider"], "yahoo")
 
 
 if __name__ == "__main__":

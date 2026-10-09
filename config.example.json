@@ -1,7 +1,6 @@
 {
   "anomaly_threshold_pct": 3.0,
   "fetch_interval_secs": 300,
-  "market_data_provider": "yahoo",
   "www_port": 8090,
   "groups": [
     {

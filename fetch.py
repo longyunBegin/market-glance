@@ -11,7 +11,7 @@ import urllib.request
 from datetime import datetime, time as clock_time, timedelta, timezone
 
 from alpaca_data import fetch_bars as fetch_alpaca_bars, fetch_latest_trades
-from config_model import load_config
+from config_model import load_config, provider_for_symbol
 from market_calendar import early_closes, is_trading_day
 
 try:
@@ -274,6 +274,21 @@ def _last_attempt(path):
         return None
 
 
+def _stale_quote(old, symbol, name, group, provider, now, error):
+    """Reuse a cached quote only when it was produced by the routed provider."""
+    if old and old.get("price") is not None and old.get("provider") == provider:
+        quote = dict(old)
+        quote["name"], quote["group"] = name, group
+        quote["stale"] = True
+        quote.setdefault("stale_since", int(now))
+        return quote
+    return {
+        "symbol": symbol, "name": name, "group": group,
+        "price": None, "chg_pct": None, "provider": provider,
+        "stale": True, "error": error,
+    }
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Fetch market quotes")
     parser.add_argument("--force", action="store_true", help="ignore the configured fetch interval")
@@ -302,29 +317,40 @@ def main(argv=None):
         _atomic_json(last_attempt_path, {"timestamp": now})
 
         previous_quotes = {}
+        previous_provider = None
         quotes_path = os.path.join(data_dir, "quotes.json")
         if os.path.exists(quotes_path):
             try:
                 with open(quotes_path, encoding="utf-8") as stream:
-                    previous_quotes = {quote["symbol"]: quote
-                                       for quote in json.load(stream)["quotes"]}
+                    previous_snapshot = json.load(stream)
+                previous_provider = previous_snapshot.get("provider")
+                previous_quotes = {}
+                for cached_quote in previous_snapshot.get("quotes", []):
+                    cached_quote = dict(cached_quote)
+                    if "provider" not in cached_quote:
+                        cached_quote["provider"] = previous_provider
+                    previous_quotes[cached_quote["symbol"]] = cached_quote
             except Exception:  # noqa: BLE001
                 pass
 
         quotes = []
-        provider = config["market_data_provider"]
-        ticker_symbols = [ticker["symbol"] for group in config["groups"]
-                          for ticker in group["tickers"]]
+        ticker_providers = {
+            ticker["symbol"]: ticker.get("provider") or provider_for_symbol(ticker["symbol"])
+            for group in config["groups"] for ticker in group["tickers"]
+        }
+        alpaca_symbols = [symbol for symbol, provider in ticker_providers.items()
+                          if provider == "alpaca_iex"]
         latest_trades = {}
-        if provider == "alpaca_iex":
+        if alpaca_symbols:
             try:
-                latest_trades = fetch_latest_trades(ticker_symbols)
+                latest_trades = fetch_latest_trades(alpaca_symbols)
             except Exception as exc:  # noqa: BLE001
                 print("warn: Alpaca IEX latest trades unavailable: %s" % str(exc)[:160])
         for group in config["groups"]:
             for ticker in group["tickers"]:
                 symbol = ticker["symbol"]
                 name, group_name = ticker["name"], group["name"]
+                provider = ticker_providers[symbol]
                 error = None
                 quote = None
                 for attempt in (1, 2):
@@ -351,21 +377,16 @@ def main(argv=None):
                                   "candles": candles})
                 else:
                     old = previous_quotes.get(symbol)
-                    if old and old.get("price") is not None:
-                        old = dict(old)
-                        old["name"], old["group"] = name, group_name
-                        old["stale"] = True
-                        old.setdefault("stale_since", int(now))
-                        quotes.append(old)
-                    else:
-                        quotes.append({"symbol": symbol, "name": name, "group": group_name,
-                                       "price": None, "chg_pct": None, "error": error})
+                    quotes.append(_stale_quote(
+                        old, symbol, name, group_name, provider, now, error,
+                    ))
                 if provider == "yahoo":
                     time.sleep(5.0)
 
         _atomic_json(quotes_path, {"updated": int(time.time()),
                                    "anomaly_threshold_pct": config["anomaly_threshold_pct"],
-                                   "provider": provider,
+                                   "provider_mode": "symbol_route",
+                                   "providers": sorted(set(ticker_providers.values())),
                                    "quotes": quotes})
         successful = sum(1 for quote in quotes if quote["price"] is not None)
         print("ok: %d/%d tickers" % (successful, len(quotes)))

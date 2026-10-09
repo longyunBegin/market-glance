@@ -82,7 +82,7 @@ class FrontendGuardTests(unittest.TestCase):
 
     def test_chart_has_selected_name_quote_and_color_legend(self):
         self.assertIn('id="cname"', self.html)
-        self.assertIn("$('cname').textContent=quote&&quote.name?quote.name:''", self.html)
+        self.assertIn("$('cname').textContent=quote?[quote.name,providerLabel(quote.provider)].filter(Boolean).join(' · '):''", self.html)
         self.assertIn("font-variant-numeric: tabular-nums; font-family: ui-monospace", self.html)
         self.assertIn('aria-label="K 线图例"', self.html)
         self.assertIn('K 线数据更新时间 ', self.html)
@@ -118,13 +118,16 @@ class FrontendGuardTests(unittest.TestCase):
         self.assertIn("waitForUpdatedQuotes(pendingConfig", self.html)
         self.assertNotIn("element.querySelector('textarea')", self.html)
 
-    def test_alpaca_iex_provider_is_selectable_and_discloses_coverage(self):
-        self.assertIn('id="cfgProvider"', self.html)
-        self.assertIn('<option value="alpaca_iex">Alpaca IEX</option>', self.html)
+    def test_sources_are_auto_routed_and_disclosed_per_ticker(self):
+        self.assertIn("function providerLabel(provider)", self.html)
+        self.assertIn("source.textContent = providerLabel(q.provider); source.title", self.html)
+        self.assertIn("item.append(symbol, source, price)", self.html)
+        self.assertIn("q.price==null?'失败':'旧'", self.html)
+        self.assertIn("普通美股代码使用 Alpaca IEX", self.html)
+        self.assertNotIn('id="cfgProvider"', self.html)
         self.assertIn("APCA_API_KEY_ID / APCA_API_SECRET_KEY", self.html)
-        self.assertIn("仅 IEX 交易所美股数据", self.html)
-        self.assertIn("market_data_provider:$('cfgProvider').value", self.html)
-        self.assertIn("if(result.provider_changed)", self.html)
+        self.assertIn("不是全市场 SIP 汇总", self.html)
+        self.assertIn("列表会显示每个标的的实际来源", self.html)
 
     def test_desktop_panel_controls_and_theme_preferences_are_persistent(self):
         self.assertIn('data-layout-toggle="overview"', self.html)
