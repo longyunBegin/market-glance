@@ -465,6 +465,11 @@ function formatPercent(value){
 function providerLabel(provider){
   return provider==='alpaca_iex'?'Alpaca IEX':(provider==='yahoo'?'Yahoo Finance':'来源待定');
 }
+function etDateKey(seconds){
+  const parts=fmtEtDate.formatToParts(new Date(Number(seconds)*1000));
+  const fields=Object.fromEntries(parts.map(part=>[part.type,part.value]));
+  return fields.year+'-'+fields.month+'-'+fields.day;
+}
 function quoteSessionPrefix(q){
   const session=q.price_session==='pre'?'盘前':(q.price_session==='after'?'盘后':'');
   if(!session)return '';

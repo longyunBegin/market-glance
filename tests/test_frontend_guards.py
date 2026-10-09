@@ -57,6 +57,8 @@ class FrontendGuardTests(unittest.TestCase):
         self.assertIn("q.price_session==='after'?'盘后'", self.html)
         self.assertIn("return session?session+'价':''", self.html)
         self.assertIn("q.price_timestamp", self.html)
+        self.assertIn("function etDateKey(seconds)", self.html)
+        self.assertIn("fmtEtDate.formatToParts(new Date(Number(seconds)*1000))", self.html)
         self.assertIn("quoteDate!==today?'上次':''", self.html)
         self.assertIn("quoteSessionPrefix(q)+' '+formatPercent(q.extended_chg_pct)", self.html)
         self.assertIn("q.extended_chg_pct", self.html)
