@@ -43,6 +43,13 @@ class FrontendGuardTests(unittest.TestCase):
         self.assertNotIn("const TAPE_BASES", self.html)
         self.assertIn("配置观察池代码后会显示在这里", self.html)
 
+    def test_tape_scrolls_left_in_a_seamless_loop(self):
+        self.assertIn("@keyframes tape-scroll", self.html)
+        self.assertIn("transform: translate3d(-50%, 0, 0)", self.html)
+        self.assertIn("const clone=sequence.cloneNode(true);", self.html)
+        self.assertIn("clone.setAttribute('aria-hidden','true')", self.html)
+        self.assertIn("prefers-reduced-motion: reduce", self.html)
+
     def test_extended_session_prices_are_distinguished_from_regular_close_change(self):
         self.assertIn("function quoteSessionLabel(q)", self.html)
         self.assertIn("q.price_session==='pre'?'盘前'", self.html)
@@ -95,6 +102,13 @@ class FrontendGuardTests(unittest.TestCase):
         self.assertIn('K 线数据更新时间 ', self.html)
         self.assertIn("syncChartHeader(curSym)", self.html)
 
+    def test_intraday_chart_axis_uses_device_local_timezone(self):
+        self.assertIn("tickMarkFormatter:formatChartTimeTick", self.html)
+        self.assertIn("function formatChartTimeTick(time)", self.html)
+        self.assertIn("hour:'2-digit',minute:'2-digit'", self.html)
+        self.assertIn("return curTf==='1d'", self.html)
+        self.assertIn("timeZone:'UTC'", self.html)
+
     def test_chart_offers_daily_and_latest_intraday_session_only(self):
         chart_periods = re.findall(r'<button class="tfbtn[^\"]*" data-tf="([^\"]+)"', self.html)
         self.assertEqual(chart_periods, ["5m", "1d"])
@@ -133,6 +147,7 @@ class FrontendGuardTests(unittest.TestCase):
     def test_sources_are_auto_routed_and_disclosed_per_ticker(self):
         self.assertIn("function providerLabel(provider)", self.html)
         self.assertIn("source.textContent = providerLabel(q.provider); source.title", self.html)
+        self.assertIn("const provider=providerForChartSymbol(ticker.symbol);", self.html)
         self.assertIn("item.append(symbol, source, price)", self.html)
         self.assertIn("q.price==null?'失败':'旧'", self.html)
         self.assertIn("每只代码都可单独选择", self.html)

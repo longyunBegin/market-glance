@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" type="image/png" href="assets/market-glance-logo.png">
 <title>Market Glance · 美股行情看板</title>
 <script src="assets/lightweight-charts.js"></script>
 <style>
@@ -40,11 +41,7 @@
     backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
   }
   header h1 { display: flex; align-items: center; gap: 10px; white-space: nowrap; font-size: 17px; font-weight: 720; letter-spacing: -.045em; }
-  header h1::before {
-    content: "M"; display: grid; place-items: center; width: 30px; height: 30px; flex: 0 0 30px;
-    border-radius: 9px; background: linear-gradient(145deg, #477be4, #2855b5); color: #fff;
-    font: 700 14px/1 Inter, sans-serif; letter-spacing: -.06em; box-shadow: 0 4px 10px rgba(53,105,212,.22);
-  }
+  .brand-icon { width: 30px; height: 30px; flex: 0 0 30px; object-fit: contain; border-radius: 8px; filter: drop-shadow(0 2px 3px rgba(0,0,0,.14)); }
   .stage { display: flex; align-items: center; gap: 7px; color: #526174; font-size: 12px; white-space: nowrap; }
   .stage > span:first-child { color: var(--muted) !important; }
   .dot { width: 8px; height: 8px; flex: 0 0 8px; border-radius: 50%; background: #d39835; box-shadow: 0 0 0 3px rgba(211,152,53,.13); }
@@ -62,11 +59,19 @@
   .theme-toggle:focus-visible, .gear:focus-visible, .layout-controls button:focus-visible,
   .tfbtn:focus-visible, .btn:focus-visible, .mobile-tabs button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .tape {
-    display: flex; align-items: center; gap: 7px; min-height: 58px; overflow-x: auto; white-space: nowrap;
+    display: block; min-height: 58px; overflow: hidden; white-space: nowrap;
     padding: 9px max(20px, calc((100vw - 1680px) / 2)); background: rgba(255,255,255,.75);
-    border-bottom: 1px solid var(--line); scrollbar-width: none;
+    border-bottom: 1px solid var(--line);
   }
-  .tape::-webkit-scrollbar { display: none; }
+  .tape-track { display: flex; width: max-content; animation: tape-scroll var(--tape-duration, 36s) linear infinite; will-change: transform; }
+  .tape-sequence { display: flex; align-items: center; gap: 7px; width: max-content; padding-right: 7px; flex: 0 0 auto; }
+  .tape-item { flex: 0 0 auto; }
+  .tape:hover .tape-track, .tape:focus-within .tape-track { animation-play-state: paused; }
+  @keyframes tape-scroll { to { transform: translate3d(-50%, 0, 0); } }
+  @media (prefers-reduced-motion: reduce) {
+    .tape-track { animation: none; will-change: auto; }
+    .tape-sequence[aria-hidden="true"] { display: none; }
+  }
   .tape-item {
     display: inline-flex; align-items: center; gap: 8px; padding: 7px 11px; border: 1px solid transparent;
     border-radius: 9px; color: #526174; font-size: 11px; cursor: pointer; transition: background .18s, border-color .18s;
@@ -294,12 +299,13 @@
   @media (max-width: 700px) {
     header { min-height: 0; flex-wrap: wrap; gap: 8px 10px; padding: 10px 13px; }
     header h1 { margin-right: auto; font-size: 16px; }
-    header h1::before { width: 28px; height: 28px; flex-basis: 28px; }
+    .brand-icon { width: 28px; height: 28px; flex-basis: 28px; }
     .stage { order: 3; width: 100%; flex-wrap: wrap; gap: 5px 7px; padding: 8px 9px; border: 1px solid var(--line); border-radius: 9px; background: rgba(248,250,253,.9); font-size: 10px; }
     .quote-update { order: 4; margin-left: 0; font-size: 10px; }
     .theme-toggle { order: 2; height: 32px; }
     .gear { order: 2; height: 32px; width: 33px; }
-    .tape { min-height: 51px; gap: 4px; padding: 7px 9px; }
+    .tape { min-height: 51px; padding: 7px 9px; }
+    .tape-sequence { gap: 4px; padding-right: 4px; }
     .tape-item { gap: 6px; padding: 6px 8px; font-size: 10px; }
     .layout-controls { display: none; }
     main { grid-template-columns: minmax(0, 1fr); grid-template-areas: "tabs" "overview" "anomalies" "chart"; gap: 9px; padding: 10px 9px 18px; }
@@ -334,7 +340,7 @@
 </head>
 <body>
 <header>
-  <h1>Market Glance</h1>
+  <h1><img class="brand-icon" src="assets/market-glance-logo.png" alt="" aria-hidden="true">Market Glance</h1>
   <div class="stage"><span style="color:#999">纽约时段</span><span class="dot" id="dot"></span><span id="stage">—</span><span id="countdown" style="color:#999"></span><span id="marketClock" title="按纽约交易所时区显示" style="color:#999">纽约时间 —</span></div>
   <div class="quote-update" id="updated">行情最后更新：—</div>
   <select class="theme-toggle" id="themeToggle" aria-label="主题模式（浅色、深色或系统）" title="主题模式会自动保存到此浏览器">
@@ -538,6 +544,9 @@ function rowElement(q, anomaly=false, threshold=3){
 
 function renderTape(tapeQuotes){
   const tape = $('tape'); tape.replaceChildren();
+  const track=document.createElement('div'); track.className='tape-track';
+  const sequence=document.createElement('div'); sequence.className='tape-sequence';
+  track.appendChild(sequence); tape.appendChild(track);
   tapeQuotes.forEach(q=>{
     const item = document.createElement('span'); item.className = 'tape-item'+(q.symbol===curSym?' active':''); item.dataset.sym = q.symbol;
     const symbol = document.createElement('b'); symbol.textContent = q.symbol;
@@ -556,9 +565,18 @@ function renderTape(tapeQuotes){
       extended.textContent=quoteSessionPrefix(q)+' '+formatPercent(q.extended_chg_pct)+' 较收盘';
       item.appendChild(extended);
     }
-    tape.appendChild(item);
+    sequence.appendChild(item);
   });
-  if(!tapeQuotes.length){ const empty = document.createElement('span'); empty.className='err'; empty.textContent='配置观察池代码后会显示在这里'; tape.appendChild(empty); }
+  if(!tapeQuotes.length){ const empty = document.createElement('span'); empty.className='err'; empty.textContent='配置观察池代码后会显示在这里'; sequence.appendChild(empty); track.style.animation='none'; return; }
+  const originalItems=[...sequence.children];
+  const style=getComputedStyle(tape);
+  const viewportWidth=Math.max(0,tape.clientWidth-parseFloat(style.paddingLeft)-parseFloat(style.paddingRight));
+  const reducedMotion=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(!reducedMotion){
+    while(sequence.scrollWidth<viewportWidth) originalItems.forEach(item=>sequence.appendChild(item.cloneNode(true)));
+  }
+  const clone=sequence.cloneNode(true); clone.setAttribute('aria-hidden','true'); track.appendChild(clone);
+  track.style.setProperty('--tape-duration',Math.max(18,sequence.scrollWidth/44)+'s');
 }
 
 function dashboardQuotes(){
@@ -566,9 +584,10 @@ function dashboardQuotes(){
   const bySymbol=new Map(quotes.map(quote=>[quote.symbol,quote]));
   return configuredGroups.flatMap(group=>(group.tickers||[]).map(ticker=>{
     const quote=bySymbol.get(ticker.symbol);
+    const provider=providerForChartSymbol(ticker.symbol);
     return quote
-      ? {...quote,name:ticker.name||quote.name||ticker.symbol,group:group.name}
-      : {symbol:ticker.symbol,name:ticker.name||ticker.symbol,group:group.name,provider:ticker.provider,price:null,chg_pct:null,pending:true};
+      ? {...quote,name:ticker.name||quote.name||ticker.symbol,group:group.name,provider}
+      : {symbol:ticker.symbol,name:ticker.name||ticker.symbol,group:group.name,provider,price:null,chg_pct:null,pending:true};
   }));
 }
 function ensureSelectedSymbol(){
@@ -839,7 +858,17 @@ async function refresh(){
 if(typeof LightweightCharts!=='undefined'){
   chartOk=true;
   const colors=chartPalette();
-  chart=LightweightCharts.createChart($('chart'),{layout:{background:{color:colors.background},textColor:colors.text},grid:{vertLines:{color:colors.grid},horzLines:{color:colors.grid}},timeScale:{timeVisible:true}});
+  function formatChartTimeTick(time){
+    if(typeof time!=='number'){
+      const date=new Date(Date.UTC(time.year,time.month-1,time.day));
+      return new Intl.DateTimeFormat(undefined,{month:'numeric',day:'numeric',timeZone:'UTC'}).format(date);
+    }
+    const date=new Date(time*1000);
+    return curTf==='1d'
+      ?new Intl.DateTimeFormat(undefined,{month:'numeric',day:'numeric',timeZone:'UTC'}).format(date)
+      :new Intl.DateTimeFormat(undefined,{hour:'2-digit',minute:'2-digit'}).format(date);
+  }
+  chart=LightweightCharts.createChart($('chart'),{layout:{background:{color:colors.background},textColor:colors.text},grid:{vertLines:{color:colors.grid},horzLines:{color:colors.grid}},timeScale:{timeVisible:true,tickMarkFormatter:formatChartTimeTick}});
   series=chart.addCandlestickSeries({upColor:colors.up,downColor:colors.down,wickUpColor:colors.up,wickDownColor:colors.down,borderVisible:false});
   volSeries=chart.addHistogramSeries({priceFormat:{type:'volume'},priceScaleId:''});
   chart.priceScale('').applyOptions({scaleMargins:{top:.84,bottom:0}});
