@@ -120,6 +120,20 @@ class ServerApiTests(unittest.TestCase):
         self.assertEqual(fetch.call_args.kwargs["provider"], "yahoo")
         self.assertEqual(payload["provider"], "yahoo")
 
+    def test_5m_refresh_bypasses_cached_bars(self):
+        candles = [[1791479400, 10.0, 11.0, 9.0, 10.5, 100]]
+        with tempfile.TemporaryDirectory() as data_dir:
+            cache_path = Path(data_dir) / "alpaca_iex" / "MRVL.json"
+            cache_path.parent.mkdir(parents=True)
+            cache_path.write_text(json.dumps({"candles": [[1, 1, 1, 1, 1, 1]]}), encoding="utf-8")
+            with patch.object(server, "KL_DIR", data_dir), \
+                    patch.object(server, "fetch_candles", return_value=(candles, {})) as fetch:
+                with urlopen(self.base_url + "/api/klines?symbol=MRVL&tf=5m&refresh=1") as response:
+                    payload = json.load(response)
+        fetch.assert_called_once_with("MRVL", "5m", "2d", provider="alpaca_iex")
+        self.assertFalse(payload["cached"])
+        self.assertEqual(payload["candles"], candles)
+
 
 if __name__ == "__main__":
     unittest.main()

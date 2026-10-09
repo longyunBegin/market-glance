@@ -25,7 +25,7 @@ from market_calendar import market_status  # noqa: E402
 
 SYM_RE = re.compile(r"^[A-Z0-9^.=\-]{1,12}$")
 TF_MAP = {
-    "5m": ("5m", "2d", None),
+    "5m": ("5m", "2d", 300),
     "15m": ("15m", "1mo", 900),
     "1d": ("1d", "1y", 3600),
 }
@@ -118,6 +118,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         }
         provider = configured_providers.get(symbol, provider_for_symbol(symbol))
         interval, yahoo_range, ttl = TF_MAP[timeframe]
+        if timeframe == "5m":
+            ttl = min(ttl, config["fetch_interval_secs"])
         path = kline_cache_path(KL_DIR, symbol, timeframe, provider)
 
         def cached_response(stale=False, max_age=0):

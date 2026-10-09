@@ -45,8 +45,12 @@ class FrontendGuardTests(unittest.TestCase):
 
     def test_extended_session_prices_are_distinguished_from_regular_close_change(self):
         self.assertIn("function quoteSessionLabel(q)", self.html)
-        self.assertIn("q.price_session==='pre'?'盘前价'", self.html)
-        self.assertIn("q.price_session==='after'?'盘后价'", self.html)
+        self.assertIn("q.price_session==='pre'?'盘前'", self.html)
+        self.assertIn("q.price_session==='after'?'盘后'", self.html)
+        self.assertIn("return session?session+'价':''", self.html)
+        self.assertIn("q.price_timestamp", self.html)
+        self.assertIn("quoteDate!==today?'上次':''", self.html)
+        self.assertIn("quoteSessionPrefix(q)+' '+formatPercent(q.extended_chg_pct)", self.html)
         self.assertIn("q.extended_chg_pct", self.html)
         self.assertIn("较收盘", self.html)
         self.assertIn("(sessionLabel?'收盘 ':'')+formatPercent(change)", self.html)
@@ -101,7 +105,9 @@ class FrontendGuardTests(unittest.TestCase):
         self.assertIn("走势日期 ", self.html)
         self.assertIn('id="sessionCoverage"', self.html)
         self.assertIn("04:00–09:30 ET", self.html)
-        self.assertIn("function setPremarketStatus(bars,timeframe,state='loaded')", self.html)
+        self.assertIn("function setPremarketStatus(bars,timeframe,state='loaded',provider=providerForChartSymbol(curSym))", self.html)
+        self.assertIn("Alpaca IEX 的盘前从 08:00 ET 开始", self.html)
+        self.assertIn("const hasToday=bars.some(bar=>etDateKey(bar.time)===today)", self.html)
 
     def test_mobile_tabs_and_config_editor_validate_before_preview(self):
         self.assertIn('data-panel-tab="overview"', self.html)

@@ -234,6 +234,7 @@ def fetch_one(symbol, name, group, provider="yahoo", latest_trade=None,
     return {
         "symbol": symbol, "name": name, "group": group,
         "price": round(last, 2),
+        "price_timestamp": int(price_timestamp) if price_timestamp is not None else None,
         "chg_pct": round(change, 2) if change is not None else None,
         "prev_close": round(comparison_close, 4) if comparison_close is not None else None,
         "regular_close": round(regular_close, 4) if regular_close is not None else None,

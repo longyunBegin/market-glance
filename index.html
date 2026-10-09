@@ -375,7 +375,7 @@
       </div></div>
     <div class="subbar"><span><span class="ohlc" id="cohlc"></span><span class="cnote" id="cnote" role="status" aria-live="polite"></span></span>
       <label class="mato"><input type="checkbox" id="mato" checked> 均线(20/50)</label></div>
-    <div class="chart-legend" aria-label="K 线图例"><span><i class="legend-swatch"></i><i class="legend-swatch down"></i>上涨 / 下跌 K 线与成交量</span><span><i class="legend-swatch ma20"></i>MA20</span><span><i class="legend-swatch ma50"></i>MA50</span><span><i class="legend-swatch previous"></i>前收</span><span id="sessionCoverage" class="session-coverage">5 分钟图支持盘前（04:00–09:30 ET），以所选行情源实际返回为准</span></div>
+    <div class="chart-legend" aria-label="K 线图例"><span><i class="legend-swatch"></i><i class="legend-swatch down"></i>上涨 / 下跌 K 线与成交量</span><span><i class="legend-swatch ma20"></i>MA20</span><span><i class="legend-swatch ma50"></i>MA50</span><span><i class="legend-swatch previous"></i>前收</span><span id="sessionCoverage" class="session-coverage">盘前覆盖依所选数据源而异（IEX：08:00–09:30 ET）</span></div>
     <div id="chart" aria-live="polite" aria-busy="false"></div>
   </section>
 </main>
@@ -397,7 +397,7 @@
     </section>
     <section class="cfg-pane" data-cfg-pane="settings" hidden>
       <div class="cfg-settings">
-        <div class="route-hint">每只代码都可单独选择“自动 / Alpaca IEX / Yahoo Finance”。自动模式下普通美股代码默认走 IEX，指数及带后缀代码默认走 Yahoo；图表和报价使用同一来源，失败时不会跨源切换。</div>
+        <div class="route-hint">每只代码都可单独选择“自动 / Alpaca IEX / Yahoo Finance”。自动模式下普通美股代码默认走 IEX，指数及带后缀代码默认走 Yahoo；图表和报价使用同一来源，失败时不会跨源切换。注意：IEX 盘前时段为 08:00–09:30 ET，不覆盖美股全市场 04:00 起的早盘；需要更早的盘前 K 线时，请为该代码选择能覆盖该时段的数据源。</div>
         <label>异动阈值 (%) <input id="cfgThreshold" type="number" min="0.1" max="50" step="0.1"></label>
         <label>抓取间隔 (秒) <input id="cfgInterval" type="number" min="60" max="86400" step="60"></label>
       </div>
@@ -490,8 +490,16 @@ function formatPercent(value){
 function providerLabel(provider){
   return provider==='alpaca_iex'?'Alpaca IEX':(provider==='yahoo'?'Yahoo Finance':'来源待定');
 }
+function quoteSessionPrefix(q){
+  const session=q.price_session==='pre'?'盘前':(q.price_session==='after'?'盘后':'');
+  if(!session)return '';
+  const quoteDate=q.price_timestamp!=null&&Number.isFinite(Number(q.price_timestamp))?etDateKey(Number(q.price_timestamp)):'';
+  const today=etDateKey(Math.floor(Date.now()/1000));
+  return (quoteDate&&quoteDate!==today?'上次':'')+session;
+}
 function quoteSessionLabel(q){
-  return q.price_session==='pre'?'盘前价':(q.price_session==='after'?'盘后价':'');
+  const session=quoteSessionPrefix(q);
+  return session?session+'价':'';
 }
 function rowElement(q, anomaly=false, threshold=3){
   const change = q.chg_pct, up = change != null && change > 0, down = change != null && change < 0;
@@ -522,7 +530,7 @@ function rowElement(q, anomaly=false, threshold=3){
   if(sessionLabel&&q.extended_chg_pct!=null){
     const extended=document.createElement('div');
     extended.className='ext-c'+(q.extended_chg_pct>0?' up':(q.extended_chg_pct<0?' down':''));
-    extended.textContent=(q.price_session==='pre'?'盘前 ':'盘后 ')+formatPercent(q.extended_chg_pct)+' 较收盘';
+    extended.textContent=quoteSessionPrefix(q)+' '+formatPercent(q.extended_chg_pct)+' 较收盘';
     values.appendChild(extended);
   }
   return row;
@@ -545,7 +553,7 @@ function renderTape(tapeQuotes){
     if(sessionLabel&&q.extended_chg_pct!=null){
       const extended=document.createElement('span');
       extended.className='ext-c'+(q.extended_chg_pct>0?' up':(q.extended_chg_pct<0?' down':''));
-      extended.textContent=(q.price_session==='pre'?'盘前 ':'盘后 ')+formatPercent(q.extended_chg_pct)+' 较收盘';
+      extended.textContent=quoteSessionPrefix(q)+' '+formatPercent(q.extended_chg_pct)+' 较收盘';
       item.appendChild(extended);
     }
     tape.appendChild(item);
@@ -664,7 +672,7 @@ function latestIntradaySession(bars){
   return bars.filter(bar=>etDateKey(bar.time)===latestDate);
 }
 
-function setPremarketStatus(bars,timeframe,state='loaded'){
+function setPremarketStatus(bars,timeframe,state='loaded',provider=providerForChartSymbol(curSym)){
   const label=$('sessionCoverage');
   if(!label)return;
   label.hidden=timeframe!=='5m';
@@ -679,7 +687,22 @@ function setPremarketStatus(bars,timeframe,state='loaded'){
     label.classList.add('no-premarket');
     return;
   }
+  const today=etDateKey(Math.floor(Date.now()/1000));
+  const latestDate=bars.reduce((latest,bar)=>{const date=etDateKey(bar.time);return date>latest?date:latest;},'');
+  const hasToday=bars.some(bar=>etDateKey(bar.time)===today);
+  const clock=Object.fromEntries(fmtEtClockParts.formatToParts(new Date()).map(part=>[part.type,part.value]));
+  const currentEtMinutes=Number(clock.hour)*60+Number(clock.minute);
+  if(!hasToday){
+    label.classList.add('no-premarket');
+    if(provider==='alpaca_iex'&&currentEtMinutes<480){
+      label.textContent='Alpaca IEX 的盘前从 08:00 ET 开始；当前纽约时间尚未到 IEX 盘前开市。走势日期为 '+(latestDate||'暂无')+'，因此没有当天盘前 K 线。';
+    }else{
+      label.textContent='当前没有当天盘前 K 线；图中走势日期为 '+(latestDate||'暂无')+'（以所选数据源实际返回为准）。';
+    }
+    return;
+  }
   const premarketCount=bars.filter(bar=>{
+    if(etDateKey(bar.time)!==today)return false;
     const parts=Object.fromEntries(fmtEtClockParts.formatToParts(new Date(bar.time*1000)).map(part=>[part.type,part.value]));
     const minutes=Number(parts.hour)*60+Number(parts.minute);
     return minutes>=240&&minutes<570;
@@ -687,7 +710,9 @@ function setPremarketStatus(bars,timeframe,state='loaded'){
   if(premarketCount){
     label.textContent='已显示 '+premarketCount+' 根盘前 K 线（04:00–09:30 ET）';
   }else{
-    label.textContent='该交易日未收到盘前 K 线（支持 04:00–09:30 ET；以来源返回为准）';
+    label.textContent=provider==='alpaca_iex'
+      ?'当天已收到 K 线，但 IEX 仅覆盖 08:00–09:30 ET 的盘前时段；全市场 04:00 起的早盘不在此来源内。'
+      :'该交易日未收到盘前 K 线（支持 04:00–09:30 ET；以来源返回为准）';
     label.classList.add('no-premarket');
   }
 }
@@ -716,7 +741,7 @@ async function showChart(symbol, timeframe, force=false){
   document.querySelectorAll('[data-sym]').forEach(el=>el.classList.toggle('active',el.dataset.sym===symbol));
   document.querySelectorAll('.tfbtn[data-tf]').forEach(el=>el.classList.toggle('on',el.dataset.tf===timeframe));
   if(selectionChanged||timeframeChanged||providerChanged)clearChartData();
-  setPremarketStatus([],timeframe,'loading');
+  setPremarketStatus([],timeframe,'loading',providerForChartSymbol(symbol));
   $('cnote').textContent='正在加载 '+symbol+' · '+(TF_LABEL[timeframe]||timeframe);
   $('cohlc').textContent=''; $('chart').setAttribute('aria-busy','true');
   if(!chartOk){$('chart').setAttribute('aria-busy','false');return;}
@@ -738,7 +763,7 @@ async function showChart(symbol, timeframe, force=false){
     if(quote && quote.prev_close){prevLine=series.createPriceLine({price:quote.prev_close,color:colors.reference,lineWidth:1,lineStyle:LightweightCharts.LineStyle.Dashed,title:'前收'});}
     chart.applyOptions({timeScale:{timeVisible:timeframe!=='1d'}});
     chart.timeScale().fitContent(); curBars=bars; loadedChartSymbol=symbol; loadedChartTimeframe=timeframe; loadedChartProvider=data.provider||providerForChartSymbol(symbol);
-    setPremarketStatus(bars,timeframe);
+    setPremarketStatus(bars,timeframe,'loaded',data.provider||providerForChartSymbol(symbol));
     syncChartHeader(symbol); $('tflabel').textContent=TF_LABEL[timeframe]||timeframe;
     $('chart').setAttribute('aria-busy','false');
     const updatedLabel=data.updatedAt?'K 线数据更新时间 '+fmtT(data.updatedAt):'K 线数据已加载';
@@ -751,8 +776,8 @@ async function showChart(symbol, timeframe, force=false){
       $('chart').setAttribute('aria-busy','false');
       const matchingPrevious=loadedChartSymbol===symbol&&loadedChartTimeframe===timeframe&&loadedChartProvider===providerForChartSymbol(symbol)&&curBars.length>0;
       if(!matchingPrevious)clearChartData();
-      if(matchingPrevious)setPremarketStatus(curBars,timeframe);
-      else setPremarketStatus([],timeframe,'error');
+      if(matchingPrevious)setPremarketStatus(curBars,timeframe,'loaded',loadedChartProvider);
+      else setPremarketStatus([],timeframe,'error',providerForChartSymbol(symbol));
       const previous=matchingPrevious?'仍显示 '+symbol+'（'+timeframe+'）同标的上次成功数据。':'当前没有可用的 '+symbol+' 图表数据；不会显示其他标的的 K 线。';
       $('cnote').textContent='图表数据未更新：'+symbol+'（'+error.message+'）。'+previous;
     }
@@ -771,7 +796,7 @@ function syncChartHeader(symbol){
     const change=quote.chg_pct;
     const price=quote.price==null?'—':String(quote.price);
     const sessionLabel=quoteSessionLabel(quote);
-    const extLabel=quote.price_session==='pre'?'盘前':(quote.price_session==='after'?'盘后':'');
+    const extLabel=quoteSessionPrefix(quote);
     const details=sessionLabel
       ? [price,sessionLabel,change==null?'':'收盘 '+formatPercent(change),quote.extended_chg_pct==null?'':extLabel+' '+formatPercent(quote.extended_chg_pct)+' 较收盘'].filter(Boolean)
       : [change==null?'':formatPercent(change),price].filter(Boolean);

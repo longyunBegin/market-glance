@@ -183,6 +183,7 @@ class QuoteChangeTests(unittest.TestCase):
         self.assertEqual(quote["regular_close"], 102)
         self.assertEqual(quote["price_session"], "after")
         self.assertEqual(quote["extended_chg_pct"], 1.0)
+        self.assertEqual(quote["price_timestamp"], int(latest.timestamp()))
 
     def test_premarket_after_holiday_uses_latest_two_trading_closes(self):
         daily = [self.candle(2026, 11, 24, 9, 30, 100),
