@@ -35,6 +35,19 @@ sudo bash systemd/install.sh
 
 默认网页服务只监听 `127.0.0.1`，可在本机打开 `http://127.0.0.1:8090`。需要从另一台机器访问时，建议配置 SSH 隧道；如需直接暴露网络端口，应自行配置防火墙和访问控制。
 
+### 从旧版升级
+
+旧提交曾将 `config.json` 纳入 Git。升级到忽略本地配置的版本前，先在仓库目录备份并从工作区恢复旧的跟踪版本，避免本地观察列表阻止 `git pull` 或被删除：
+
+```bash
+backup="../market-glance-config.$(date +%Y%m%d%H%M%S).json"
+cp config.json "$backup"
+git checkout -- config.json
+git pull
+cp "$backup" config.json
+sudo bash systemd/install.sh
+```
+
 ### 可选 SSH 隧道
 
 安装脚本默认不会启用隧道。需要隧道时，先在系统本机配置命令：
