@@ -18,6 +18,8 @@ fetch.py ── 读取 config.json 的数据源与抓取间隔 ──→ data/qu
 server.py ── 页面服务 + /api/config + /api/klines + /api/market-status
     │
 index.html ── 同源单页看板（lightweight-charts 内联，无外部运行时依赖）
+    │
+macOS WidgetKit ── 只读 127.0.0.1:<配置端口>/data/quotes.json
 ```
 
 - **K 线**：提供日K和当日走势（5 分钟粒度）；当日走势只显示最近一个有数据的交易日，周末、休市时自然显示上一交易日，并标注图表日期。图表包括成交量、MA20/50 和前收参考线。换标时标题和报价立即跟随选择，图表显示加载状态；若暂时保留旧图，会明确标出旧图所属标的，失败时提示“图表数据未更新”，不会把旧图伪装成新标的。过期请求不会覆盖后来选中的标的。
@@ -32,7 +34,7 @@ index.html ── 同源单页看板（lightweight-charts 内联，无外部运�
 
 ### macOS（轻量运行）
 
-无需 Electron 或额外桌面框架；使用 macOS 自带的 `launchd` 启动本机服务，再用默认浏览器打开看板。需要 Python 3.9+；不需要管理员权限。
+无需 Electron；使用 macOS 自带的 `launchd` 启动本机服务，再用默认浏览器打开看板。需要 Python 3.9+；不需要管理员权限。
 
 ```bash
 git clone https://github.com/longyunBegin/market-glance.git
@@ -41,6 +43,8 @@ bash macos/install.sh
 ```
 
 安装脚本将应用复制到 `~/Library/Application Support/Market Glance`，创建两个当前用户的 LaunchAgent（网页服务常驻；抓取任务每分钟唤醒，并遵守配置的抓取间隔），然后打开本机看板。现有本地配置会保留；首次安装时使用仓库内的 `config.json`（若有），否则采用示例配置。设置、行情缓存和日志都保存在上述目录。运行 `bash macos/uninstall.sh` 可停止并移除自动启动项；为避免误删数据，本地设置、缓存和日志会保留。
+
+**原生 macOS 行情小组件（macOS 14+）**：安装时若检测到 Xcode，脚本会构建并安装 `~/Applications/Market Glance.app`，使用小组件图库添加“Market Glance 行情”，支持小号与中号布局。小组件使用大号现价、涨跌幅和横向观察代码列表；深色外观为纯黑，浅色外观跟随 macOS 系统外观。数据只从本机看板服务读取，不读取钥匙串或访问行情源；其更新时间由 WidgetKit 系统计划管理，非实时推送。若安装时没有 Xcode，可之后安装 Xcode 并运行 `bash ~/Library/Application\ Support/Market\ Glance/macos/install-widget.sh <端口>`；端口应与 `config.json` 中的 `www_port` 相同。网页内已有主题偏好不受小组件影响。
 
 **Chrome 工具栏快看（最小版）**：安装后在 Chrome 打开 `chrome://extensions`，启用“开发者模式”，点击“加载已解压的扩展程序”，选择 `~/Library/Application Support/Market Glance/app/chrome-extension`。之后点击工具栏中的 Market Glance 图标即可查看本机观察池行情；弹窗只读取本机行情快照，不接触钥匙串密钥。扩展使用安装时配置的服务端口。
 
@@ -168,7 +172,7 @@ python3 fetch.py --force
 python3 -m unittest discover -s tests -v
 ```
 
-测试覆盖配置边界、抓取间隔门控、K 线缓存 TTL、Linux 安装路径生成、macOS LaunchAgent 与 Chrome 扩展配置、前端安全渲染、市场假日/时段计算，以及周末、假日和盘前盘后的收盘涨跌幅口径。
+测试覆盖配置边界、抓取间隔门控、K 线缓存 TTL、Linux 安装路径生成、macOS LaunchAgent、Chrome 扩展与 WidgetKit 集成配置、前端安全渲染、市场假日/时段计算，以及周末、假日和盘前盘后的收盘涨跌幅口径。WidgetKit 原生构建需要 macOS 14+ 和 Xcode；非 macOS 环境仅运行静态集成测试。
 
 ## 目录结构
 
@@ -185,6 +189,7 @@ market-glance/
 ├── data/               运行时行情数据（Git 忽略）
 ├── systemd/            unit 模板与安装脚本
 ├── macos/              launchd 安装、卸载与钥匙串启动脚本
+│   └── widget/         SwiftUI + WidgetKit 原生小组件 Xcode 工程
 ├── chrome-extension/   Mac Chrome 工具栏行情弹窗
 ├── tests/              回归测试
 ├── healthcheck.sh      本机网页健康检查

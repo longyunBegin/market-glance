@@ -15,5 +15,11 @@ for label in io.market-glance.web io.market-glance.fetch; do
   rm -f "$plist"
 done
 
+WIDGET_APP="$HOME/Applications/Market Glance.app"
+if [[ -d "$WIDGET_APP" ]]; then
+  rm -rf "$WIDGET_APP"
+fi
+
 echo "Market Glance 自动启动项已移除。"
+echo "原生行情小组件应用已从 ~/Applications 移除（如已固定到桌面，请从桌面移除残留小组件）。"
 echo "本地配置、行情缓存和日志仍保留在：$HOME/Library/Application Support/Market Glance"

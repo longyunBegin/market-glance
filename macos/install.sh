@@ -42,6 +42,11 @@ rm -rf "$APP_DIR/chrome-extension"
 cp -R "$SRC/chrome-extension" "$APP_DIR/chrome-extension"
 cp -f "$SRC/macos/run-with-keychain.sh" "$APP_DIR/run-with-keychain.sh"
 chmod 700 "$APP_DIR/run-with-keychain.sh"
+rm -rf "$APP_DIR/macos"
+mkdir -p "$APP_DIR/macos"
+cp -R "$SRC/macos/widget" "$APP_DIR/macos/widget"
+cp -f "$SRC/macos/install-widget.sh" "$APP_DIR/macos/install-widget.sh"
+chmod 700 "$APP_DIR/macos/install-widget.sh"
 
 # Keep existing app settings; on first install use the checkout's private config if present,
 # otherwise start with the public example configuration.
@@ -114,6 +119,12 @@ if source not in script:
     raise SystemExit("ERROR: Chrome 扩展端口模板不存在。")
 path.write_text(script.replace(source, f"const API_PORT = {int(sys.argv[2])};"), encoding="utf-8")
 PY
+if command -v xcodebuild >/dev/null 2>&1; then
+  bash "$APP_DIR/macos/install-widget.sh" "$PORT"
+else
+  echo "未检测到 Xcode；看板和 Chrome 扩展已安装，小组件可稍后运行："
+  echo "bash \"$APP_DIR/macos/install-widget.sh\" $PORT"
+fi
 URL="http://127.0.0.1:$PORT"
 ready=0
 for _ in $(seq 1 30); do
