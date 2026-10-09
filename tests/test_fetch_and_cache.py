@@ -81,5 +81,71 @@ class AlpacaDataTests(unittest.TestCase):
         self.assertEqual(returned_bars, bars)
 
 
+class QuoteChangeTests(unittest.TestCase):
+    @staticmethod
+    def candle(year, month, day, hour, minute, close):
+        timestamp = int(datetime(year, month, day, hour, minute,
+                                 tzinfo=fetch.ET).timestamp())
+        return [timestamp, close, close, close, close, 1]
+
+    def fetch_quote(self, intraday, daily, trade, now):
+        def candle_source(symbol, interval, period, provider="yahoo"):
+            return (intraday if interval == "5m" else daily), {"provider": provider}
+
+        with patch("fetch.fetch_candles", side_effect=candle_source):
+            quote, _ = fetch.fetch_one(
+                "AAPL", "Apple", "Watch", provider="alpaca_iex",
+                latest_trade=trade, trades_loaded=True, now=now,
+            )
+        return quote
+
+    @staticmethod
+    def trade(price, timestamp):
+        return {"p": price, "t": timestamp.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")}
+
+    def test_after_hours_price_keeps_close_to_close_change_through_weekend(self):
+        daily = [self.candle(2026, 10, 8, 9, 30, 100),
+                 self.candle(2026, 10, 9, 9, 30, 102)]
+        latest = datetime(2026, 10, 9, 17, 30, tzinfo=fetch.ET)
+        quote = self.fetch_quote(
+            [self.candle(2026, 10, 9, 16, 0, 103.02)], daily,
+            self.trade(103.02, latest), datetime(2026, 10, 11, 12, 0, tzinfo=fetch.ET),
+        )
+        self.assertEqual(quote["price"], 103.02)
+        self.assertEqual(quote["chg_pct"], 2.0)
+        self.assertEqual(quote["prev_close"], 100)
+        self.assertEqual(quote["regular_close"], 102)
+        self.assertEqual(quote["price_session"], "after")
+        self.assertEqual(quote["extended_chg_pct"], 1.0)
+
+    def test_premarket_after_holiday_uses_latest_two_trading_closes(self):
+        daily = [self.candle(2026, 11, 24, 9, 30, 100),
+                 self.candle(2026, 11, 25, 9, 30, 101)]
+        latest = datetime(2026, 11, 27, 8, 0, tzinfo=fetch.ET)
+        quote = self.fetch_quote(
+            [self.candle(2026, 11, 27, 8, 0, 101.5)], daily,
+            self.trade(101.5, latest), datetime(2026, 11, 27, 8, 30, tzinfo=fetch.ET),
+        )
+        self.assertEqual(quote["chg_pct"], 1.0)
+        self.assertEqual(quote["prev_close"], 100)
+        self.assertEqual(quote["regular_close"], 101)
+        self.assertEqual(quote["price_session"], "pre")
+        self.assertEqual(quote["extended_chg_pct"], 0.5)
+
+    def test_live_regular_quote_uses_latest_completed_close_as_baseline(self):
+        daily = [self.candle(2026, 10, 8, 9, 30, 100),
+                 self.candle(2026, 10, 9, 9, 30, 102)]
+        latest = datetime(2026, 10, 9, 10, 30, tzinfo=fetch.ET)
+        quote = self.fetch_quote(
+            [self.candle(2026, 10, 9, 10, 30, 101)], daily,
+            self.trade(101, latest), datetime(2026, 10, 9, 10, 35, tzinfo=fetch.ET),
+        )
+        self.assertEqual(quote["price_session"], "regular")
+        self.assertEqual(quote["regular_close"], 100)
+        self.assertEqual(quote["prev_close"], 100)
+        self.assertEqual(quote["chg_pct"], 1.0)
+        self.assertIsNone(quote["extended_chg_pct"])
+
+
 if __name__ == "__main__":
     unittest.main()

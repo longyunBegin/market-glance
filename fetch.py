@@ -8,10 +8,11 @@ import tempfile
 import time
 import urllib.parse
 import urllib.request
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, time as clock_time, timedelta, timezone
 
 from alpaca_data import fetch_bars as fetch_alpaca_bars, fetch_latest_trades
 from config_model import load_config
+from market_calendar import early_closes, is_trading_day
 
 try:
     from zoneinfo import ZoneInfo
@@ -89,42 +90,156 @@ def fetch_candles(symbol, interval, period, provider="yahoo"):
     return candles, metadata
 
 
+def _as_et(now=None):
+    now = now or datetime.now(ET)
+    return now.replace(tzinfo=ET) if now.tzinfo is None else now.astimezone(ET)
+
+
+def _regular_close_time(day):
+    return clock_time(13, 0) if day in early_closes(day.year) else clock_time(16, 0)
+
+
+def _market_is_open(now):
+    now = _as_et(now)
+    local_time = now.time().replace(tzinfo=None)
+    return (is_trading_day(now.date()) and clock_time(9, 30) <= local_time <
+            _regular_close_time(now.date()))
+
+
+def _quote_session(timestamp):
+    """Classify a quote timestamp, including quotes retained over weekends."""
+    if timestamp is None:
+        return "unknown"
+    quoted_at = datetime.fromtimestamp(timestamp, ET)
+    if not is_trading_day(quoted_at.date()):
+        return "closed"
+    local_time = quoted_at.time().replace(tzinfo=None)
+    close_time = _regular_close_time(quoted_at.date())
+    if clock_time(4, 0) <= local_time < clock_time(9, 30):
+        return "pre"
+    if clock_time(9, 30) <= local_time < close_time:
+        return "regular"
+    if close_time <= local_time < clock_time(20, 0):
+        return "after"
+    return "closed"
+
+
+def _completed_session_closes(candles, now=None, daily=False):
+    """Return completed regular-session closes keyed by NYSE session date."""
+    now = _as_et(now)
+    closes_by_day = {}
+    for candle in candles:
+        if len(candle) < 5:
+            continue
+        try:
+            timestamp, close = int(candle[0]), float(candle[4])
+        except (TypeError, ValueError, OverflowError):
+            continue
+        if close <= 0:
+            continue
+        day = datetime.fromtimestamp(timestamp, ET).date()
+        if not is_trading_day(day):
+            continue
+        if not daily:
+            local_time = datetime.fromtimestamp(timestamp, ET).time().replace(tzinfo=None)
+            if not clock_time(9, 30) <= local_time < _regular_close_time(day):
+                continue
+        closes_by_day[day] = close
+
+    completed = []
+    for day in sorted(closes_by_day, reverse=True):
+        if day > now.date():
+            continue
+        if day == now.date() and now.time().replace(tzinfo=None) < _regular_close_time(day):
+            continue
+        completed.append((day, closes_by_day[day]))
+    return completed
+
+
+def _trade_timestamp(trade):
+    if not isinstance(trade, dict) or not trade.get("t"):
+        return None
+    try:
+        return datetime.fromisoformat(str(trade["t"]).replace("Z", "+00:00")).timestamp()
+    except (TypeError, ValueError, OverflowError):
+        return None
+
+
 def fetch_one(symbol, name, group, provider="yahoo", latest_trade=None,
-              trades_loaded=False):
-    """Fetch one symbol and return (quote, candles)."""
+              trades_loaded=False, now=None):
+    """Fetch a quote whose daily change is always anchored to regular closes."""
     candles, metadata = fetch_candles(symbol, "5m", "2d", provider=provider)
     if provider == "alpaca_iex" and not trades_loaded:
         latest_trade = fetch_latest_trades([symbol]).get(symbol)
-    timestamps = [candle[0] for candle in candles]
-    midnight_et = datetime.now(ET).replace(hour=0, minute=0, second=0, microsecond=0)
-    yesterday_close_ts = int(midnight_et.timestamp()) - 8 * 3600
-    day_start_ts = int(midnight_et.timestamp())
-    previous = None
-    closes = [candle[4] for candle in candles]
-    for index in range(len(timestamps) - 1, -1, -1):
-        if timestamps[index] <= yesterday_close_ts and closes[index]:
-            previous = closes[index]
-            break
-    if previous is None:
-        for index in range(len(timestamps) - 1, -1, -1):
-            if timestamps[index] < day_start_ts and closes[index]:
-                previous = closes[index]
-                break
-    if previous is None:
-        previous = metadata.get("chartPreviousClose") or metadata.get("previousClose")
+
+    now_et = _as_et(now)
+    closes = [candle[4] for candle in candles if len(candle) > 4]
+    timestamps = [candle[0] for candle in candles if candle]
     last = closes[-1] if closes else None
+    price_timestamp = timestamps[-1] if timestamps else None
     if provider == "alpaca_iex" and isinstance(latest_trade, dict):
         trade_price = latest_trade.get("p")
         if isinstance(trade_price, (int, float)) and trade_price > 0:
             last = float(trade_price)
+            price_timestamp = _trade_timestamp(latest_trade) or price_timestamp
     if last is None:
         raise ValueError("行情源没有可用成交或 K 线数据")
-    change = (last / previous - 1) * 100 if last and previous else None
+
+    # Daily bars span holidays and long weekends that a two-day intraday window
+    # cannot cover. Intraday regular-session bars are a fallback if daily fetch fails.
+    daily_candles = []
+    try:
+        if provider == "yahoo":
+            time.sleep(5.0)
+        daily_candles, _ = fetch_candles(symbol, "1d", "1mo", provider=provider)
+    except Exception:  # noqa: BLE001 - preserve quotes when the daily endpoint fails
+        pass
+    session_closes = {}
+    for day, close in _completed_session_closes(candles, now_et, daily=False):
+        session_closes[day] = close
+    for day, close in _completed_session_closes(daily_candles, now_et, daily=True):
+        session_closes[day] = close
+    recent_closes = sorted(session_closes.items(), reverse=True)
+
+    regular_close = recent_closes[0][1] if recent_closes else None
+    previous_close = recent_closes[1][1] if len(recent_closes) > 1 else None
+    metadata_previous = metadata.get("chartPreviousClose") or metadata.get("previousClose")
+    if regular_close is None:
+        regular_close = metadata_previous or (closes[-1] if closes else None)
+    if previous_close is None and metadata_previous and metadata_previous != regular_close:
+        previous_close = metadata_previous
+
+    price_session = _quote_session(price_timestamp)
+    quoted_on = (datetime.fromtimestamp(price_timestamp, ET).date()
+                 if price_timestamp is not None else None)
+    live_regular_quote = (
+        _market_is_open(now_et) and price_session == "regular" and quoted_on == now_et.date()
+    )
+    if live_regular_quote and regular_close:
+        change = (last / regular_close - 1) * 100
+        comparison_close = regular_close
+    elif regular_close and previous_close:
+        change = (regular_close / previous_close - 1) * 100
+        comparison_close = previous_close
+    elif previous_close:
+        change = (last / previous_close - 1) * 100
+        comparison_close = previous_close
+    else:
+        change = None
+        comparison_close = previous_close
+
+    extended_change = None
+    if price_session in ("pre", "after") and regular_close:
+        extended_change = (last / regular_close - 1) * 100
     return {
         "symbol": symbol, "name": name, "group": group,
-        "price": round(last, 2) if last is not None else None,
+        "price": round(last, 2),
         "chg_pct": round(change, 2) if change is not None else None,
-        "prev_close": previous, "provider": provider,
+        "prev_close": round(comparison_close, 4) if comparison_close is not None else None,
+        "regular_close": round(regular_close, 4) if regular_close is not None else None,
+        "price_session": price_session,
+        "extended_chg_pct": round(extended_change, 2) if extended_change is not None else None,
+        "provider": provider,
     }, candles
 
 

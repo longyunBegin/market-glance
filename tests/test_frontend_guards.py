@@ -37,6 +37,20 @@ class FrontendGuardTests(unittest.TestCase):
         self.assertNotIn("if(excluded.has(q.symbol)) return;", self.html)
         self.assertIn("观察池暂无可显示的代码", self.html)
 
+    def test_tape_includes_every_configured_watchlist_ticker(self):
+        self.assertIn('aria-label="观察池行情带"', self.html)
+        self.assertIn("const tapeQuotes = displayQuotes;", self.html)
+        self.assertNotIn("const TAPE_BASES", self.html)
+        self.assertIn("配置观察池代码后会显示在这里", self.html)
+
+    def test_extended_session_prices_are_distinguished_from_regular_close_change(self):
+        self.assertIn("function quoteSessionLabel(q)", self.html)
+        self.assertIn("q.price_session==='pre'?'盘前价'", self.html)
+        self.assertIn("q.price_session==='after'?'盘后价'", self.html)
+        self.assertIn("q.extended_chg_pct", self.html)
+        self.assertIn("较收盘", self.html)
+        self.assertIn("(sessionLabel?'收盘 ':'')+formatPercent(change)", self.html)
+
     def test_configured_tickers_remain_visible_without_quote_snapshot(self):
         self.assertIn("function dashboardQuotes()", self.html)
         self.assertIn("pending:true", self.html)
@@ -74,10 +88,30 @@ class FrontendGuardTests(unittest.TestCase):
         self.assertIn('K 线数据更新时间 ', self.html)
         self.assertIn("syncChartHeader(curSym)", self.html)
 
+    def test_chart_offers_daily_and_latest_intraday_session_only(self):
+        chart_periods = re.findall(r'<button class="tfbtn[^\"]*" data-tf="([^\"]+)"', self.html)
+        self.assertEqual(chart_periods, ["5m", "1d"])
+        self.assertIn('data-tf="5m" title="休市时显示最近一个有数据的交易日">当日走势</button>', self.html)
+        self.assertIn('data-tf="1d">日K</button>', self.html)
+        self.assertIn("function latestIntradaySession(bars)", self.html)
+        self.assertIn("bars.filter(bar=>etDateKey(bar.time)===latestDate)", self.html)
+        self.assertIn("走势日期 ", self.html)
+
     def test_mobile_tabs_and_config_editor_validate_before_preview(self):
         self.assertIn('data-panel-tab="overview"', self.html)
         self.assertIn('data-panel-tab="anomalies"', self.html)
         self.assertIn('data-panel-tab="chart"', self.html)
+        self.assertIn('data-panel-tab="overview" class="on" aria-pressed="true">观察池</button>', self.html)
+        self.assertIn('data-panel-tab="anomalies" aria-pressed="false">异动</button>', self.html)
+        self.assertIn('data-panel-tab="chart" aria-pressed="false">图表</button>', self.html)
+        self.assertIn('id="manageWatchlist" aria-label="新增分组或代码"', self.html)
+        self.assertIn("$('manageWatchlist').onclick=()=>openCfg('watchlist')", self.html)
+        self.assertIn('data-cfg-pane="watchlist"', self.html)
+        self.assertIn('data-cfg-pane="settings"', self.html)
+        self.assertIn('class="cfg-guide"><strong>新增观察代码</strong>', self.html)
+        self.assertIn('添加分组并命名', self.html)
+        self.assertIn('预览后确认保存', self.html)
+        self.assertIn("group.querySelector('.ticker-symbol').focus()", self.html)
         self.assertIn(r"const symbolPattern=/^[A-Z0-9^.=\-]{1,12}$/", self.html)
         self.assertIn("代码重复：", self.html)
         self.assertIn("变更预览", self.html)
