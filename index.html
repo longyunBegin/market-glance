@@ -19,17 +19,19 @@
   .tape { background: #fff; border-bottom: 1px solid #e2e4e8; overflow-x: auto; white-space: nowrap; padding: 8px 0; min-height: 37px; }
   .tape-item { display: inline-block; padding: 2px 14px; border-right: 1px solid #eee; font-size: 13px; cursor: pointer; }
   .tape-item.active { background: #e8efff; border-radius: 4px; }
-  .tape-item b { font-weight: 700; } .tape-item .pr { color: #333; margin-left: 6px; }
+  .tape-item b { font-weight: 700; } .tape-item .pr { color: #333; margin-left: 6px; font-variant-numeric: tabular-nums; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
   .up { color: #168447; } .down { color: #c62828; }
-  main { display: grid; grid-template-columns: minmax(210px, 250px) minmax(235px, 290px) minmax(0, 1fr); gap: 12px; padding: 12px 16px; max-width: 1500px; margin: 0 auto; }
-  main.hide-overview:not(.hide-anomalies), main.hide-anomalies:not(.hide-overview) { grid-template-columns: minmax(220px, 290px) minmax(0, 1fr); }
-  main.hide-overview.hide-anomalies { grid-template-columns: minmax(0, 1fr); }
-  @media (max-width: 1120px) { main { grid-template-columns: minmax(220px, 1fr) minmax(220px, 1fr); } main:not(.hide-overview):not(.hide-anomalies) > section:last-child { grid-column: 1 / -1; } }
+  main { display: grid; grid-template-columns: minmax(220px, 250px) minmax(560px, 1fr) minmax(260px, 300px); grid-template-areas: "overview chart anomalies"; gap: 12px; padding: 12px 16px; max-width: 1500px; margin: 0 auto; }
   .mobile-tabs { display: none; }
   .layout-controls { display: flex; align-items: center; gap: 6px; max-width: 1500px; margin: 10px auto 0; padding: 0 16px; color: #777; font-size: 12px; }
   .layout-controls button { border: 1px solid #d9dde4; background: #fff; color: #555; border-radius: 5px; padding: 4px 9px; font-size: 12px; cursor: pointer; }
   .layout-controls button[aria-pressed="true"] { border-color: #9ab8e5; background: #edf4ff; color: #245b9d; }
   .layout-controls button:focus-visible, .theme-toggle:focus-visible, .gear:focus-visible { outline: 2px solid #1a73e8; outline-offset: 2px; }
+  .watch-controls { display: grid; grid-template-columns: minmax(0, 1fr) 112px; gap: 6px; margin: 0 0 8px; }
+  .watch-controls input, .watch-controls select { min-width: 0; width: 100%; height: 31px; padding: 5px 7px; border: 1px solid #d9dde4; border-radius: 5px; background: #fff; color: #333; font-size: 12px; }
+  .anomaly-filters { display: flex; gap: 5px; margin: 0 0 8px; }
+  .anomaly-filters button { border: 1px solid #d9dde4; border-radius: 5px; background: #fff; color: #666; padding: 4px 9px; font-size: 12px; cursor: pointer; }
+  .anomaly-filters button[aria-pressed="true"] { background: #edf4ff; border-color: #9ab8e5; color: #245b9d; font-weight: 600; }
   .signal { display: inline-block; margin-left: 8px; padding: 1px 5px; border-radius: 4px; font-size: 10px; font-weight: 600; background: #fff4d6; color: #946200; vertical-align: 1px; }
   .signal.medium { background: #ffedd5; color: #a04b00; }
   .signal.strong { background: #fde8e7; color: #b3261e; }
@@ -49,7 +51,8 @@
     header h1 { font-size: 16px; }
     .stage { font-size: 12px; }
     #updated { margin-left: auto !important; }
-    main { grid-template-columns: minmax(0, 1fr); gap: 9px; padding: 9px; }
+    main { grid-template-columns: minmax(0, 1fr); grid-template-areas: "tabs" "overview" "anomalies" "chart"; gap: 9px; padding: 9px; }
+    .mobile-tabs { grid-area: tabs; }
     .mobile-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 3px; background: #e9ebef; border-radius: 7px; }
     .mobile-tabs button { border: 0; border-radius: 5px; background: transparent; color: #555; padding: 8px 4px; font-size: 13px; cursor: pointer; }
     .mobile-tabs button.on { background: #fff; color: #1a1a1a; font-weight: 600; }
@@ -62,6 +65,9 @@
     .modal { max-height: 92vh; }
   }
   .panel { min-width: 0; background: #fff; border: 1px solid #e2e4e8; border-radius: 8px; padding: 12px; }
+  [data-panel="overview"] { grid-area: overview; }
+  [data-panel="chart"] { grid-area: chart; }
+  [data-panel="anomalies"] { grid-area: anomalies; }
   .panel h2 { font-size: 12px; letter-spacing: .05em; color: #777; margin-bottom: 8px; font-weight: 600; }
   .panel h2 .cn { color: #aaa; font-weight: 400; margin-left: 6px; }
   .grp { font-size: 12px; color: #999; margin: 10px 0 4px; }
@@ -70,12 +76,19 @@
   .row.stale { opacity: .55; }
   .row .st { font-size: 10px; color: #fff; background: #b0b0b0; border-radius: 3px; padding: 1px 4px; margin-left: 6px; }
   .row .sym { font-weight: 700; overflow-wrap: anywhere; } .row .nm { color: #888; font-size: 12px; margin-left: 6px; overflow-wrap: anywhere; }
-  .row .qt { text-align: right; flex: 0 0 auto; } .row .qt .p { font-weight: 600; } .row .qt .c { font-size: 12px; }
+  .row .qt { text-align: right; flex: 0 0 auto; font-variant-numeric: tabular-nums; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; } .row .qt .p { font-weight: 600; } .row .qt .c { font-size: 12px; }
   .thr { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-size: 12px; color: #777; }
   .thr input { width: 58px; padding: 3px 6px; border: 1px solid #ddd; border-radius: 4px; }
   #chart { width: 100%; height: clamp(320px, 35vw, 460px); }
   .chead { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 6px; }
-  .chead .t { font-size: 16px; font-weight: 700; } .chead .t .c { font-size: 13px; margin-left: 8px; }
+  .chead .t { font-size: 16px; font-weight: 700; } .chead .t .name { font-size: 12px; color: #777; font-weight: 400; margin-left: 6px; } .chead .t .c { font-size: 13px; margin-left: 8px; font-variant-numeric: tabular-nums; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .chart-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: -1px 0 7px; color: #777; font-size: 11px; }
+  .chart-legend span { display: inline-flex; align-items: center; gap: 4px; }
+  .legend-swatch { display: inline-block; width: 9px; height: 9px; border-radius: 2px; background: #22a355; }
+  .legend-swatch.down { background: #d93025; }
+  .legend-swatch.ma20 { height: 2px; border-radius: 0; background: #f5a623; }
+  .legend-swatch.ma50 { height: 2px; border-radius: 0; background: #4a90d9; }
+  .legend-swatch.previous { height: 0; border-radius: 0; border-top: 1px dashed #9098a3; background: transparent; }
   .tfbar { display: flex; gap: 4px; align-items: center; font-size: 12px; color: #999; }
   .tfbtn { border: 1px solid #ddd; background: #fff; border-radius: 5px; font-size: 12px; padding: 4px 9px; cursor: pointer; color: #555; white-space: nowrap; }
   .tfbtn.on { background: #1a73e8; border-color: #1a73e8; color: #fff; }
@@ -109,44 +122,67 @@
   .subbar .ohlc { color: #666; }
   .subbar .cnote { color: #b07b00; margin-left: 10px; }
   .subbar .mato { cursor: pointer; user-select: none; white-space: nowrap; }
+  @media (min-width: 701px) and (max-width: 1120px) {
+    main { grid-template-columns: minmax(220px, .72fr) minmax(0, 1.28fr); grid-template-areas: "overview chart" "anomalies anomalies"; }
+    main.hide-overview:not(.hide-anomalies) { grid-template-columns: minmax(0, 1fr); grid-template-areas: "chart" "anomalies"; }
+    main.hide-anomalies:not(.hide-overview) { grid-template-columns: minmax(220px, .72fr) minmax(0, 1.28fr); grid-template-areas: "overview chart"; }
+    main.hide-overview.hide-anomalies { grid-template-columns: minmax(0, 1fr); grid-template-areas: "chart"; }
+  }
   @media (min-width: 701px) {
     main.hide-overview [data-panel="overview"] { display: none; }
     main.hide-anomalies [data-panel="anomalies"] { display: none; }
   }
-  [data-theme="dark"] { color-scheme: dark; }
-  [data-theme="dark"] body { background: #11151b; color: #e5e9ef; }
-  [data-theme="dark"] header, [data-theme="dark"] .tape, [data-theme="dark"] .panel, [data-theme="dark"] .modal { background: #191e27; border-color: #303744; color: #e5e9ef; }
-  [data-theme="dark"] .tape { border-bottom-color: #303744; }
-  [data-theme="dark"] .tape-item { border-right-color: #303744; }
-  [data-theme="dark"] .tape-item.active, [data-theme="dark"] .row.active { background: #22364f; }
+  @media (min-width: 1121px) {
+    main.hide-overview:not(.hide-anomalies) { grid-template-columns: minmax(0, 1fr) minmax(260px, 300px); grid-template-areas: "chart anomalies"; }
+    main.hide-anomalies:not(.hide-overview) { grid-template-columns: minmax(220px, 250px) minmax(0, 1fr); grid-template-areas: "overview chart"; }
+    main.hide-overview.hide-anomalies { grid-template-columns: minmax(0, 1fr); grid-template-areas: "chart"; }
+  }
+  [data-theme="dark"] { color-scheme: dark; background: #000; }
+  [data-theme="dark"] body { background: #000; color: #ededed; }
+  [data-theme="dark"] header, [data-theme="dark"] .tape, [data-theme="dark"] .panel, [data-theme="dark"] .modal { background: #000; border-color: #292929; color: #ededed; }
+  [data-theme="dark"] .tape { border-bottom-color: #292929; }
+  [data-theme="dark"] .tape-item { border-right-color: #292929; }
+  [data-theme="dark"] .tape-item.active, [data-theme="dark"] .row.active { background: #1c1c1c; }
   [data-theme="dark"] .tape-item .pr, [data-theme="dark"] .row .nm, [data-theme="dark"] .quote-update,
   [data-theme="dark"] .panel h2, [data-theme="dark"] .grp, [data-theme="dark"] .subbar .ohlc,
-  [data-theme="dark"] footer, [data-theme="dark"] .thr, [data-theme="dark"] .modal .hint { color: #a1aab8; }
-  [data-theme="dark"] .panel h2 .cn { color: #858f9d; }
-  [data-theme="dark"] .row:hover, [data-theme="dark"] .gear:hover, [data-theme="dark"] .theme-toggle:hover { background: #232c3a; }
+  [data-theme="dark"] footer, [data-theme="dark"] .thr, [data-theme="dark"] .modal .hint { color: #a6a6a6; }
+  [data-theme="dark"] .panel h2 .cn { color: #858585; }
+  [data-theme="dark"] .row:hover, [data-theme="dark"] .gear:hover, [data-theme="dark"] .theme-toggle:hover { background: #171717; }
   [data-theme="dark"] .layout-controls button, [data-theme="dark"] .theme-toggle, [data-theme="dark"] .gear,
-  [data-theme="dark"] .tfbtn, [data-theme="dark"] .btn { background: #202630; color: #dce2eb; border-color: #3a4350; }
-  [data-theme="dark"] .layout-controls button[aria-pressed="true"], [data-theme="dark"] .tfbtn.on, [data-theme="dark"] .btn.primary { background: #245a91; border-color: #3475b6; color: #fff; }
-  [data-theme="dark"] .cfg-settings, [data-theme="dark"] .cfg-preview { background: #202630; color: #c0c8d4; }
-  [data-theme="dark"] .cfg-preview { border-color: #34485f; }
-  [data-theme="dark"] .cfg-preview h4 { color: #e5e9ef; }
-  [data-theme="dark"] .cfg-grp { border-color: #303744; }
+  [data-theme="dark"] .tfbtn, [data-theme="dark"] .btn { background: #0a0a0a; color: #dedede; border-color: #3a3a3a; }
+  [data-theme="dark"] .layout-controls button[aria-pressed="true"], [data-theme="dark"] .tfbtn.on, [data-theme="dark"] .btn.primary { background: #252525; border-color: #555; color: #fff; }
+  [data-theme="dark"] .cfg-settings, [data-theme="dark"] .cfg-preview { background: #080808; color: #c8c8c8; }
+  [data-theme="dark"] .cfg-preview { border-color: #333; }
+  [data-theme="dark"] .cfg-preview h4 { color: #ededed; }
+  [data-theme="dark"] .cfg-grp { border-color: #292929; }
   [data-theme="dark"] .cfg-ticker-row input, [data-theme="dark"] .cfg-settings input,
-  [data-theme="dark"] .cfg-grp input.gname, [data-theme="dark"] .thr input { background: #12161c; color: #e5e9ef; border-color: #3a4350; }
-  [data-theme="dark"] .cfg-grp .del { background: #2b2022; border-color: #664344; }
-  [data-theme="dark"] .cfg-ticker-row .del { background: #202630; border-color: #3a4350; color: #c0c8d4; }
+  [data-theme="dark"] .cfg-grp input.gname, [data-theme="dark"] .thr input,
+  [data-theme="dark"] .watch-controls input, [data-theme="dark"] .watch-controls select,
+  [data-theme="dark"] .anomaly-filters button { background: #080808; color: #ededed; border-color: #3a3a3a; }
+  [data-theme="dark"] .cfg-grp .del { background: #130909; border-color: #664344; }
+  [data-theme="dark"] .cfg-ticker-row .del { background: #0a0a0a; border-color: #3a3a3a; color: #c8c8c8; }
   [data-theme="dark"] .cfg-add-ticker { color: #8ab4f8; }
-  [data-theme="dark"] .cfg-notice { background: #1b2a3f; border-color: #2c4564; color: #adcaff; }
-  [data-theme="dark"] .stalebar { background: #342d1c; border-color: #514528; color: #e9c66b; }
-  [data-theme="dark"] .signal { background: #3a301b; color: #e9c66b; }
-  [data-theme="dark"] .signal.medium { background: #3b2d1e; color: #f0b76b; }
-  [data-theme="dark"] .signal.strong { background: #3d2427; color: #ff9d97; }
+  [data-theme="dark"] .cfg-notice { background: #101010; border-color: #333; color: #c7d8ef; }
+  [data-theme="dark"] .stalebar { background: #17140c; border-color: #514528; color: #e9c66b; }
+  [data-theme="dark"] .signal { background: #211b0c; color: #e9c66b; }
+  [data-theme="dark"] .signal.medium { background: #21170e; color: #f0b76b; }
+  [data-theme="dark"] .signal.strong { background: #241315; color: #ff9d97; }
+  [data-theme="dark"] .mobile-tabs { background: #080808; }
+  [data-theme="dark"] .mobile-tabs button { color: #bdbdbd; }
+  [data-theme="dark"] .mobile-tabs button.on { background: #1c1c1c; color: #fff; }
+  [data-theme="dark"] .anomaly-filters button[aria-pressed="true"] { background: #252525; border-color: #555; color: #fff; }
+  [data-theme="dark"] .chart-legend { color: #a6a6a6; }
+  [data-theme="dark"] .chead .t .name { color: #a6a6a6; }
+  [data-theme="dark"] .legend-swatch { background: #34c980; }
+  [data-theme="dark"] .legend-swatch.down { background: #f06460; }
+  [data-theme="dark"] .legend-swatch.ma20 { background: #f5b942; }
+  [data-theme="dark"] .legend-swatch.ma50 { background: #78aef5; }
+  [data-theme="dark"] .legend-swatch.previous { border-top-color: #737373; background: transparent; }
   [data-theme="dark"] .up { color: #4bd18b; }
   [data-theme="dark"] .down { color: #ff7770; }
   [data-theme="dark"] .modal-bg { background: rgba(0,0,0,.68); }
   @media (max-width: 700px) {
     .layout-controls { display: none; }
-    main.hide-overview:not(.hide-anomalies), main.hide-anomalies:not(.hide-overview), main.hide-overview.hide-anomalies { grid-template-columns: minmax(0, 1fr); }
   }
 </style>
 </head>
@@ -176,19 +212,24 @@
     <button type="button" data-panel-tab="anomalies" aria-pressed="false">异动</button>
     <button type="button" data-panel-tab="chart" aria-pressed="false">K 线</button>
   </nav>
-  <section class="panel mobile-active" data-panel="overview"><h2>MARKET OVERVIEW<span class="cn">观察池</span></h2><div id="groups"></div></section>
+  <section class="panel mobile-active" data-panel="overview"><h2>MARKET OVERVIEW<span class="cn">观察池</span></h2>
+    <div class="watch-controls"><input id="watchSearch" type="search" placeholder="搜索代码、名称或分组" aria-label="搜索观察池" autocomplete="off">
+      <select id="watchSort" aria-label="观察池排序"><option value="default">默认顺序</option><option value="symbol">代码 A–Z</option><option value="pct-desc">涨跌幅高→低</option><option value="pct-asc">涨跌幅低→高</option></select></div>
+    <div id="groups"></div></section>
   <section class="panel" data-panel="anomalies"><h2>ANOMALY SCAN<span class="cn">异动扫描</span></h2>
+    <div class="anomaly-filters" role="group" aria-label="异动方向"><button type="button" data-anomaly-filter="all" aria-pressed="true">全部</button><button type="button" data-anomaly-filter="up" aria-pressed="false">涨幅</button><button type="button" data-anomaly-filter="down" aria-pressed="false">跌幅</button></div>
     <div class="thr">阈值 <input id="thr" type="number" step="0.5" min="0.1" max="50" value="3"> %</div>
     <div id="anoms"></div>
   </section>
   <section class="panel" data-panel="chart"><h2>CANDLE<span class="cn">K 线 · 点击标的切换</span></h2>
-    <div class="chead"><div class="t"><span id="csym">—</span><span class="c" id="cchg"></span></div>
+    <div class="chead"><div class="t"><span id="csym">—</span><span class="name" id="cname"></span><span class="c" id="cchg"></span></div>
       <div class="tfbar"><span id="tflabel" style="margin-right:4px">5m · 近2日 · 含盘前盘后</span>
         <button class="tfbtn on" data-tf="5m">5分</button><button class="tfbtn" data-tf="15m">15分</button><button class="tfbtn" data-tf="1d">日K</button>
         <button class="tfbtn" id="refreshChart" type="button" title="重新读取 K 线">↻ 刷新</button>
       </div></div>
-    <div class="subbar"><span><span class="ohlc" id="cohlc"></span><span class="cnote" id="cnote"></span></span>
+    <div class="subbar"><span><span class="ohlc" id="cohlc"></span><span class="cnote" id="cnote" role="status" aria-live="polite"></span></span>
       <label class="mato"><input type="checkbox" id="mato" checked> 均线(20/50)</label></div>
+    <div class="chart-legend" aria-label="K 线图例"><span><i class="legend-swatch"></i><i class="legend-swatch down"></i>上涨 / 下跌 K 线与成交量</span><span><i class="legend-swatch ma20"></i>MA20</span><span><i class="legend-swatch ma50"></i>MA50</span><span><i class="legend-swatch previous"></i>前收</span></div>
     <div id="chart" aria-live="polite" aria-busy="false"></div>
   </section>
 </main>
@@ -217,8 +258,8 @@
 <script>
 const $ = id => document.getElementById(id);
 let quotes = [], chart = null, series = null, klCache = new Map(), chartRequestId = 0;
-let volSeries = null, ma20 = null, ma50 = null, prevLine = null, chartOk = false, curBars = [];
-let curSym = 'SPY', curTf = '5m', marketRequestId = 0, lastQuoteUpdated = 0, pendingConfig = null, originalConfig = null;
+let volSeries = null, ma20 = null, ma50 = null, prevLine = null, chartOk = false, curBars = [], loadedChartSymbol = '', loadedChartTimeframe = '';
+let curSym = 'SPY', curTf = '5m', marketRequestId = 0, lastQuoteUpdated = 0, pendingConfig = null, originalConfig = null, anomalyFilter = 'all', configuredGroups = [];
 const TF_LABEL = {'5m':'5m · 近2日 · 含盘前盘后', '15m':'15m · 近1月 · 含盘前盘后', '1d':'日K · 近1年'};
 const BENCHMARKS = new Set(['SPY','QQQ','DIA','IWM','^NDX','^IXIC','^GSPC','^DJI','^VIX','^TNX','^RUT']);
 const TAPE_BASES = ['SPY','QQQ','DIA'];
@@ -239,7 +280,7 @@ function effectiveTheme(){
 }
 function chartPalette(){
   return effectiveTheme()==='dark'
-    ? {background:'#191e27',text:'#c3cbd6',grid:'#2a313b',up:'#34c980',down:'#f06460',ma20:'#f5b942',ma50:'#78aef5',reference:'#737d8b',volUp:'rgba(52,201,128,.45)',volDown:'rgba(240,100,96,.45)'}
+    ? {background:'#000000',text:'#c3c3c3',grid:'#242424',up:'#34c980',down:'#f06460',ma20:'#f5b942',ma50:'#78aef5',reference:'#737373',volUp:'rgba(52,201,128,.45)',volDown:'rgba(240,100,96,.45)'}
     : {background:'#ffffff',text:'#555555',grid:'#f0f0f0',up:'#22a355',down:'#d93025',ma20:'#f5a623',ma50:'#4a90d9',reference:'#c9ccd1',volUp:'rgba(34,163,85,.45)',volDown:'rgba(217,48,37,.45)'};
 }
 function saveUiPreferences(){try{localStorage.setItem(UI_PREF_KEY,JSON.stringify(uiPreferences));}catch(error){}}
@@ -297,6 +338,7 @@ function rowElement(q, anomaly=false, threshold=3){
     signal.textContent=ratio>=3?'强':(ratio>=2?'中':'轻'); identity.appendChild(signal);
   }
   if(q.stale){ const stale = document.createElement('span'); stale.className = 'st'; stale.textContent = '旧'; identity.appendChild(stale); }
+  if(q.pending){ const pending = document.createElement('span'); pending.className = 'st pending'; pending.textContent = '待更新'; identity.appendChild(pending); }
   const values = document.createElement('div'); values.className = 'qt';
   const price = document.createElement('div'); price.className = 'p'; price.textContent = q.price == null ? '—' : String(q.price);
   const percent = document.createElement('div'); percent.className = 'c'+(up?' up':(down?' down':''));
@@ -319,34 +361,58 @@ function renderTape(tapeQuotes){
   if(!tapeQuotes.length){ const empty = document.createElement('span'); empty.className='err'; empty.textContent='配置常用基准代码（如 SPY、QQQ）后会显示在这里'; tape.appendChild(empty); }
 }
 
+function dashboardQuotes(){
+  if(!configuredGroups.length)return quotes;
+  const bySymbol=new Map(quotes.map(quote=>[quote.symbol,quote]));
+  return configuredGroups.flatMap(group=>(group.tickers||[]).map(ticker=>{
+    const quote=bySymbol.get(ticker.symbol);
+    return quote
+      ? {...quote,name:ticker.name||quote.name||ticker.symbol,group:group.name}
+      : {symbol:ticker.symbol,name:ticker.name||ticker.symbol,group:group.name,price:null,chg_pct:null,pending:true};
+  }));
+}
+function ensureSelectedSymbol(){
+  const available=dashboardQuotes();
+  if(!available.some(q=>q.symbol===curSym))curSym=available.some(q=>q.symbol==='SPY')?'SPY':(available[0]?available[0].symbol:'SPY');
+}
 function renderDashboard(){
   const threshold = Number.parseFloat($('thr').value);
   const safeThreshold = Number.isFinite(threshold) ? threshold : 3;
-  const tapeQuotes = TAPE_BASES.map(symbol=>quotes.find(q=>q.symbol===symbol)).filter(Boolean);
-  const selectedQuote=quotes.find(q=>q.symbol===curSym);
-  if(selectedQuote && !tapeQuotes.some(q=>q.symbol===selectedQuote.symbol)) tapeQuotes.push(selectedQuote);
-  const excluded = new Set(tapeQuotes.map(q=>q.symbol));
-  const anomalies = quotes.filter(q=>!excluded.has(q.symbol) && !BENCHMARKS.has(q.symbol) && q.chg_pct!=null && Math.abs(q.chg_pct)>=safeThreshold)
+  const searchTerm = $('watchSearch').value.trim().toLocaleLowerCase();
+  const sortMode = $('watchSort').value;
+  const displayQuotes=dashboardQuotes();
+  const tapeQuotes = TAPE_BASES.map(symbol=>displayQuotes.find(q=>q.symbol===symbol)).filter(q=>q&&!q.pending);
+  const selectedQuote=displayQuotes.find(q=>q.symbol===curSym);
+  if(selectedQuote && !selectedQuote.pending && !tapeQuotes.some(q=>q.symbol===selectedQuote.symbol)) tapeQuotes.push(selectedQuote);
+  const anomalies = displayQuotes.filter(q=>!BENCHMARKS.has(q.symbol) && q.chg_pct!=null && Math.abs(q.chg_pct)>=safeThreshold)
                           .sort((a,b)=>Math.abs(b.chg_pct)-Math.abs(a.chg_pct));
-  anomalies.forEach(q=>excluded.add(q.symbol));
   renderTape(tapeQuotes);
 
   const groups = new Map();
-  quotes.forEach(q=>{
-    if(excluded.has(q.symbol)) return;
+  displayQuotes.forEach(q=>{
+    const searchable=[q.symbol,q.name||'',q.group||''].join(' ').toLocaleLowerCase();
+    if(searchTerm&&!searchable.includes(searchTerm)) return;
     if(!groups.has(q.group)) groups.set(q.group, []);
     groups.get(q.group).push(q);
   });
   const groupRoot = $('groups'); groupRoot.replaceChildren();
   for(const [groupName, items] of groups){
+    if(sortMode==='symbol') items.sort((a,b)=>a.symbol.localeCompare(b.symbol,'zh-CN',{numeric:true,sensitivity:'base'}));
+    else if(sortMode==='pct-desc'||sortMode==='pct-asc') items.sort((a,b)=>{
+      if(a.chg_pct==null)return b.chg_pct==null?0:1;
+      if(b.chg_pct==null)return -1;
+      return sortMode==='pct-desc'?b.chg_pct-a.chg_pct:a.chg_pct-b.chg_pct;
+    });
     const heading = document.createElement('div'); heading.className='grp'; heading.textContent=groupName;
     groupRoot.appendChild(heading); items.forEach(q=>groupRoot.appendChild(rowElement(q)));
   }
-  if(!groupRoot.childElementCount){ const empty=document.createElement('div'); empty.className='err'; empty.textContent='观察池当前标的均显示在行情带或异动区'; groupRoot.appendChild(empty); }
+  if(!groupRoot.childElementCount){ const empty=document.createElement('div'); empty.className='err'; empty.textContent=searchTerm?'没有匹配的观察标的':'观察池暂无可显示的代码'; groupRoot.appendChild(empty); }
 
   const anomalyRoot = $('anoms'); anomalyRoot.replaceChildren();
-  if(anomalies.length) anomalies.forEach(q=>anomalyRoot.appendChild(rowElement(q,true,safeThreshold)));
-  else { const empty=document.createElement('div'); empty.className='err'; empty.textContent='本轮无超过阈值的非基准标的异动'; anomalyRoot.appendChild(empty); }
+  document.querySelectorAll('[data-anomaly-filter]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.anomalyFilter===anomalyFilter)));
+  const visibleAnomalies=anomalyFilter==='up'?anomalies.filter(q=>q.chg_pct>0):(anomalyFilter==='down'?anomalies.filter(q=>q.chg_pct<0):anomalies);
+  if(visibleAnomalies.length) visibleAnomalies.forEach(q=>anomalyRoot.appendChild(rowElement(q,true,safeThreshold)));
+  else { const empty=document.createElement('div'); empty.className='err'; empty.textContent=anomalyFilter==='all'?'本轮无超过阈值的非基准标的异动':'当前方向无超过阈值的标的异动'; anomalyRoot.appendChild(empty); }
   bindClicks();
 }
 
@@ -395,10 +461,13 @@ async function showChart(symbol, timeframe, force=false){
   curSym=symbol; curTf=timeframe;
   const requestId=++chartRequestId;
   if(selectionChanged) renderDashboard();
+  syncChartHeader(symbol);
   activateMobilePanel('chart');
   document.querySelectorAll('[data-sym]').forEach(el=>el.classList.toggle('active',el.dataset.sym===symbol));
   document.querySelectorAll('.tfbtn[data-tf]').forEach(el=>el.classList.toggle('on',el.dataset.tf===timeframe));
-  $('cnote').textContent='正在加载 '+symbol+' · '+(TF_LABEL[timeframe]||timeframe)+'；保留上次成功的图表标题与数据';
+  const priorData=loadedChartSymbol?(loadedChartSymbol+'（'+loadedChartTimeframe+'）的上次成功数据'):
+    '';
+  $('cnote').textContent='正在加载 '+symbol+' · '+(TF_LABEL[timeframe]||timeframe)+(priorData?'；图中仍显示 '+priorData:'');
   $('cohlc').textContent=''; $('chart').setAttribute('aria-busy','true');
   if(!chartOk){$('chart').setAttribute('aria-busy','false');return;}
   try{
@@ -416,22 +485,18 @@ async function showChart(symbol, timeframe, force=false){
     const quote=quotes.find(item=>item.symbol===symbol);
     if(quote && quote.prev_close){prevLine=series.createPriceLine({price:quote.prev_close,color:colors.reference,lineWidth:1,lineStyle:LightweightCharts.LineStyle.Dashed,title:'前收'});}
     chart.applyOptions({timeScale:{timeVisible:timeframe!=='1d'}});
-    chart.timeScale().fitContent(); curBars=bars;
-    $('csym').textContent=symbol; $('tflabel').textContent=TF_LABEL[timeframe]||timeframe;
-    if(quote && quote.chg_pct!=null){
-      const change=quote.chg_pct;
-      $('cchg').textContent=(change>0?'+':'')+Number(change).toFixed(2)+'% · '+(quote.price==null?'—':quote.price);
-      $('cchg').className='c '+(change>0?'up':(change<0?'down':''));
-    }else{$('cchg').textContent='';}
+    chart.timeScale().fitContent(); curBars=bars; loadedChartSymbol=symbol; loadedChartTimeframe=timeframe;
+    syncChartHeader(symbol); $('tflabel').textContent=TF_LABEL[timeframe]||timeframe;
     $('chart').setAttribute('aria-busy','false');
-    if(data.stale) $('cnote').textContent='K 线已加载，但为缓存旧数据（本轮抓取失败）';
-    else if(data.updatedAt && Date.now()/1000-data.updatedAt>3600) $('cnote').textContent='K 线已加载；行情文件较旧，等待下一轮服务端抓取';
-    else $('cnote').textContent='';
+    const updatedLabel=data.updatedAt?'K 线数据更新时间 '+fmtT(data.updatedAt):'K 线数据已加载';
+    if(data.stale) $('cnote').textContent=updatedLabel+' · 当前为旧缓存（本轮抓取失败）';
+    else if(data.updatedAt && Date.now()/1000-data.updatedAt>3600) $('cnote').textContent=updatedLabel+' · 数据较旧，等待下一轮服务端抓取';
+    else $('cnote').textContent=updatedLabel;
   }catch(error){
     if(requestId===chartRequestId){
       $('chart').setAttribute('aria-busy','false');
-      const previous=$('csym').textContent;
-      $('cnote').textContent='K 线加载失败（'+symbol+'）：'+error.message+'。'+(previous&&previous!==symbol?'仍显示 '+previous+' 的上次成功图表。':'');
+      const previous=loadedChartSymbol?'图中仍显示 '+loadedChartSymbol+'（'+loadedChartTimeframe+'）的上次成功数据，不代表 '+symbol+'。':'当前没有可用的 '+symbol+' 图表数据。';
+      $('cnote').textContent='图表数据未更新：'+symbol+'（'+error.message+'）。'+previous;
     }
   }
 }
@@ -440,8 +505,28 @@ function bindClicks(){
   document.querySelectorAll('[data-sym]').forEach(element=>{element.onclick=()=>showChart(element.dataset.sym);});
 }
 
+function syncChartHeader(symbol){
+  const quote=dashboardQuotes().find(item=>item.symbol===symbol);
+  $('csym').textContent=symbol||'—';
+  $('cname').textContent=quote&&quote.name?quote.name:'';
+  if(quote){
+    const change=quote.chg_pct;
+    const pct=change==null?'':(change>0?'+':'')+Number(change).toFixed(2)+'%';
+    const price=quote.price==null?'—':String(quote.price);
+    $('cchg').textContent=pct?(pct+' · '+price):price;
+    $('cchg').className='c '+(change>0?'up':(change<0?'down':''));
+  }else{$('cchg').textContent='';$('cchg').className='c';}
+}
+
 async function refresh(){
   try{
+    try{
+      const configResponse=await fetch('/api/config',{cache:'no-store'});
+      if(configResponse.ok){
+        const config=await configResponse.json();
+        if(Array.isArray(config.groups))configuredGroups=config.groups;
+      }
+    }catch(error){}
     const response=await fetch('data/quotes.json?_='+Date.now(),{cache:'no-store'});
     if(!response.ok) throw new Error('HTTP '+response.status);
     const data=await response.json();
@@ -452,11 +537,15 @@ async function refresh(){
     const ageMin=data.updated?Math.max(0,Math.floor((Date.now()/1000-data.updated)/60)):0;
     if(ageMin>=10){$('stalebar').style.display='block';$('stalebar').textContent='行情文件已 '+ageMin+' 分钟未更新（最后更新 '+fmtT(data.updated)+'）';}
     else $('stalebar').style.display='none';
-    if(!quotes.some(q=>q.symbol===curSym)) curSym=quotes.some(q=>q.symbol==='SPY')?'SPY':(quotes[0]?quotes[0].symbol:'SPY');
+    ensureSelectedSymbol();
     if($('thr').dataset.init!=='1'){$('thr').value=data.anomaly_threshold_pct||3;$('thr').dataset.init='1';}
     renderDashboard();
+    syncChartHeader(curSym);
     if(hadQuotes && previousSelection!==curSym && chartOk) showChart(curSym,curTf);
-  }catch(error){$('updated').textContent='行情最后更新：读取失败，稍后重试';}
+  }catch(error){
+    ensureSelectedSymbol(); renderDashboard(); syncChartHeader(curSym);
+    $('updated').textContent=configuredGroups.length&&!quotes.length?'行情快照尚未生成；已显示已保存的观察代码':'行情最后更新：读取失败，稍后重试';
+  }
 }
 
 if(typeof LightweightCharts!=='undefined'){
@@ -483,6 +572,11 @@ if(typeof LightweightCharts!=='undefined'){
 }
 
 $('thr').addEventListener('input',renderDashboard);
+$('watchSearch').addEventListener('input',renderDashboard);
+$('watchSort').addEventListener('change',renderDashboard);
+document.querySelectorAll('[data-anomaly-filter]').forEach(button=>{
+  button.onclick=()=>{anomalyFilter=button.dataset.anomalyFilter;renderDashboard();};
+});
 document.querySelectorAll('.tfbtn[data-tf]').forEach(button=>{button.onclick=()=>showChart(curSym,button.dataset.tf);});
 $('refreshChart').onclick=()=>showChart(curSym,curTf,true);
 document.querySelectorAll('[data-panel-tab]').forEach(button=>{button.onclick=()=>activateMobilePanel(button.dataset.panelTab);});
@@ -507,7 +601,7 @@ if(systemThemeMedia){
 }
 applyUiPreferences();
 updateMarketStage(); setInterval(updateMarketStage,30000);
-refresh().then(()=>showChart(quotes.length?quotes[0].symbol:'SPY','5m'));
+refresh().then(()=>showChart(curSym,'5m'));
 setInterval(refresh,60000);
 setInterval(()=>showChart(curSym,curTf),60000);
 
@@ -540,6 +634,8 @@ async function openCfg(){
     const response=await fetch('/api/config',{cache:'no-store'}); const config=await response.json();
     if(!response.ok) throw new Error(config.error||('HTTP '+response.status));
     originalConfig=config;
+    configuredGroups=config.groups;
+    ensureSelectedSymbol(); renderDashboard(); syncChartHeader(curSym);
     $('cfgThreshold').value=config.anomaly_threshold_pct;
     $('cfgInterval').value=config.fetch_interval_secs;
     const fragment=document.createDocumentFragment();
@@ -635,6 +731,8 @@ async function saveConfig(){
     const response=await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(pendingConfig)});
     const result=await response.json();
     if(!response.ok||!result.ok)throw new Error(result.error||('HTTP '+response.status));
+    configuredGroups=pendingConfig.groups;
+    ensureSelectedSymbol(); renderDashboard(); syncChartHeader(curSym);
     $('thr').value=pendingConfig.anomaly_threshold_pct;
     if(result.groups_changed){
       const count=pendingConfig.groups.reduce((sum,group)=>sum+group.tickers.length,0);
@@ -648,7 +746,7 @@ async function saveConfig(){
         return;
       }
       klCache.clear(); await refresh();
-      if(!quotes.some(q=>q.symbol===curSym))curSym=quotes.some(q=>q.symbol==='SPY')?'SPY':(quotes[0]?quotes[0].symbol:'SPY');
+      ensureSelectedSymbol();
       await showChart(curSym,curTf,true);
       const done='行情已更新：'+count+' 个观察代码均收到新数据（'+fmtT(snapshot.updated)+'）。';
       message.textContent=done; message.className='cfg-msg ok'; setConfigNotice(done,'ok');

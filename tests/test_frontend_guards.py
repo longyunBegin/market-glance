@@ -24,20 +24,55 @@ class FrontendGuardTests(unittest.TestCase):
         self.assertIn("&refresh=1", self.html)
 
     def test_layout_has_tablet_and_phone_breakpoints(self):
-        self.assertIn("@media (max-width: 1120px)", self.html)
+        self.assertIn('@media (min-width: 701px) and (max-width: 1120px)', self.html)
         self.assertIn("@media (max-width: 700px)", self.html)
         self.assertIn("main > .panel.mobile-active", self.html)
+        self.assertIn('grid-template-areas: "overview chart anomalies"', self.html)
+        self.assertIn("minmax(560px, 1fr) minmax(260px, 300px)", self.html)
+        self.assertIn('grid-template-areas: "overview chart" "anomalies anomalies"', self.html)
 
-    def test_quote_panels_partition_benchmarks_and_anomalies(self):
-        self.assertIn("const excluded = new Set(tapeQuotes.map(q=>q.symbol))", self.html)
-        self.assertIn("anomalies.forEach(q=>excluded.add(q.symbol))", self.html)
+    def test_watchlist_keeps_quotes_visible_even_when_repeated_elsewhere(self):
+        self.assertIn("displayQuotes.forEach(q=>{", self.html)
+        self.assertIn("const anomalies = displayQuotes.filter(q=>!BENCHMARKS.has(q.symbol)", self.html)
+        self.assertNotIn("if(excluded.has(q.symbol)) return;", self.html)
+        self.assertIn("观察池暂无可显示的代码", self.html)
+
+    def test_configured_tickers_remain_visible_without_quote_snapshot(self):
+        self.assertIn("function dashboardQuotes()", self.html)
+        self.assertIn("pending:true", self.html)
+        self.assertIn("if(q.pending)", self.html)
+        self.assertIn("const configResponse=await fetch('/api/config'", self.html)
+        self.assertIn("configuredGroups=pendingConfig.groups", self.html)
+        self.assertIn("行情快照尚未生成；已显示已保存的观察代码", self.html)
 
     def test_selection_and_chart_title_follow_successful_data(self):
-        self.assertIn("if(!quotes.some(q=>q.symbol===curSym)) curSym=", self.html)
+        self.assertIn("function ensureSelectedSymbol()", self.html)
         self.assertIn("if(requestId!==chartRequestId) return", self.html)
-        self.assertLess(self.html.index("series.setData(bars)"), self.html.index("$('csym').textContent=symbol"))
+        show_chart = self.html[self.html.index("async function showChart"):self.html.index("function bindClicks")]
+        self.assertLess(show_chart.index("syncChartHeader(symbol)"), show_chart.index("const data=await loadKlines"))
+        self.assertIn("loadedChartSymbol=symbol; loadedChartTimeframe=timeframe", show_chart)
         self.assertIn("$('chart').setAttribute('aria-busy','true')", self.html)
-        self.assertIn("K 线加载失败（", self.html)
+        self.assertIn("图表数据未更新：'+symbol", self.html)
+        self.assertIn("图中仍显示 '+loadedChartSymbol", self.html)
+
+    def test_watchlist_search_sort_and_anomaly_direction_filters(self):
+        self.assertIn('id="watchSearch" type="search"', self.html)
+        self.assertIn('id="watchSort" aria-label="观察池排序"', self.html)
+        self.assertIn("const searchable=[q.symbol,q.name||'',q.group||'']", self.html)
+        self.assertIn("sortMode==='pct-desc'", self.html)
+        self.assertIn('data-anomaly-filter="all"', self.html)
+        self.assertIn('data-anomaly-filter="up"', self.html)
+        self.assertIn('data-anomaly-filter="down"', self.html)
+        self.assertIn("anomalyFilter==='up'?anomalies.filter(q=>q.chg_pct>0)", self.html)
+        self.assertIn("anomalyFilter==='down'?anomalies.filter(q=>q.chg_pct<0)", self.html)
+
+    def test_chart_has_selected_name_quote_and_color_legend(self):
+        self.assertIn('id="cname"', self.html)
+        self.assertIn("$('cname').textContent=quote&&quote.name?quote.name:''", self.html)
+        self.assertIn("font-variant-numeric: tabular-nums; font-family: ui-monospace", self.html)
+        self.assertIn('aria-label="K 线图例"', self.html)
+        self.assertIn('K 线数据更新时间 ', self.html)
+        self.assertIn("syncChartHeader(curSym)", self.html)
 
     def test_mobile_tabs_and_config_editor_validate_before_preview(self):
         self.assertIn('data-panel-tab="overview"', self.html)
@@ -67,6 +102,12 @@ class FrontendGuardTests(unittest.TestCase):
         self.assertIn("localStorage.setItem(UI_PREF_KEY,JSON.stringify(uiPreferences))", self.html)
         self.assertIn("main.hide-overview", self.html)
         self.assertIn("main.hide-anomalies", self.html)
+
+    def test_dark_theme_uses_pure_black_surfaces_and_chart(self):
+        self.assertIn('[data-theme="dark"] { color-scheme: dark; background: #000; }', self.html)
+        self.assertIn('[data-theme="dark"] body { background: #000; color: #ededed; }', self.html)
+        self.assertIn('[data-theme="dark"] header, [data-theme="dark"] .tape, [data-theme="dark"] .panel, [data-theme="dark"] .modal { background: #000;', self.html)
+        self.assertIn("? {background:'#000000'", self.html)
 
     def test_market_session_is_dynamic_and_displays_new_york_time(self):
         self.assertIn('id="marketClock"', self.html)
