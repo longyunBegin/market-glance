@@ -123,6 +123,18 @@ class AlpacaDataTests(unittest.TestCase):
         self.assertEqual(request.call_args.args[:2], ("AAPL", "5Min"))
         self.assertTrue(request.call_args.args[2].endswith("Z"))
 
+    def test_yahoo_intraday_request_includes_premarket_and_keeps_its_bars(self):
+        timestamp = int(datetime(2026, 10, 9, 12, 0, tzinfo=timezone.utc).timestamp())
+        payload = {"chart": {"result": [{
+            "meta": {}, "timestamp": [timestamp],
+            "indicators": {"quote": [{"open": [10.0], "high": [10.5],
+                "low": [9.8], "close": [10.2], "volume": [25]}]},
+        }]}}
+        with patch("fetch.get", return_value=payload) as request:
+            candles, _ = fetch.fetch_candles("SIVE.ST", "5m", "2d", provider="yahoo")
+        self.assertIn("includePrePost=true", request.call_args.args[0])
+        self.assertEqual(candles, [[timestamp, 10.0, 10.5, 9.8, 10.2, 25]])
+
     def test_alpaca_latest_trade_sets_dashboard_quote_price(self):
         bars = [[1, 99, 102, 98, 100, 10]]
         with patch("fetch.fetch_candles", return_value=(bars, {})):

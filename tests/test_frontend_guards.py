@@ -67,7 +67,10 @@ class FrontendGuardTests(unittest.TestCase):
         self.assertIn("loadedChartSymbol=symbol; loadedChartTimeframe=timeframe", show_chart)
         self.assertIn("$('chart').setAttribute('aria-busy','true')", self.html)
         self.assertIn("图表数据未更新：'+symbol", self.html)
-        self.assertIn("图中仍显示 '+loadedChartSymbol", self.html)
+        self.assertIn("if(selectionChanged||timeframeChanged||providerChanged)clearChartData()", show_chart)
+        self.assertIn("不会显示其他标的的 K 线", show_chart)
+        self.assertNotIn("图中仍显示", show_chart)
+        self.assertIn("function clearChartData()", self.html)
 
     def test_watchlist_search_sort_and_anomaly_direction_filters(self):
         self.assertIn('id="watchSearch" type="search"', self.html)
@@ -96,6 +99,9 @@ class FrontendGuardTests(unittest.TestCase):
         self.assertIn("function latestIntradaySession(bars)", self.html)
         self.assertIn("bars.filter(bar=>etDateKey(bar.time)===latestDate)", self.html)
         self.assertIn("走势日期 ", self.html)
+        self.assertIn('id="sessionCoverage"', self.html)
+        self.assertIn("04:00–09:30 ET", self.html)
+        self.assertIn("function setPremarketStatus(bars,timeframe,state='loaded')", self.html)
 
     def test_mobile_tabs_and_config_editor_validate_before_preview(self):
         self.assertIn('data-panel-tab="overview"', self.html)
@@ -123,11 +129,14 @@ class FrontendGuardTests(unittest.TestCase):
         self.assertIn("source.textContent = providerLabel(q.provider); source.title", self.html)
         self.assertIn("item.append(symbol, source, price)", self.html)
         self.assertIn("q.price==null?'失败':'旧'", self.html)
-        self.assertIn("普通美股代码使用 Alpaca IEX", self.html)
+        self.assertIn("每只代码都可单独选择", self.html)
+        self.assertIn("自动模式下普通美股代码默认走 IEX", self.html)
+        self.assertIn("provider_mode:row.querySelector('.ticker-provider').value", self.html)
+        self.assertIn("providerForChartSymbol(symbol)", self.html)
         self.assertNotIn('id="cfgProvider"', self.html)
         self.assertIn("APCA_API_KEY_ID / APCA_API_SECRET_KEY", self.html)
         self.assertIn("不是全市场 SIP 汇总", self.html)
-        self.assertIn("列表会显示每个标的的实际来源", self.html)
+        self.assertIn("数据源变更：", self.html)
 
     def test_desktop_panel_controls_and_theme_preferences_are_persistent(self):
         self.assertIn('data-layout-toggle="overview"', self.html)

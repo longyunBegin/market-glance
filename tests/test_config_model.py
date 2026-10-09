@@ -16,6 +16,7 @@ class ConfigValidationTests(unittest.TestCase):
         self.assertEqual(config["www_port"], 8090)
         self.assertEqual(config["groups"][0]["tickers"][0]["symbol"], "AAPL")
         self.assertEqual(config["groups"][0]["tickers"][0]["provider"], "alpaca_iex")
+        self.assertEqual(config["groups"][0]["tickers"][0]["provider_mode"], "auto")
 
     def test_symbol_provider_routing(self):
         self.assertEqual(provider_for_symbol("AAPL"), "alpaca_iex")
@@ -28,6 +29,19 @@ class ConfigValidationTests(unittest.TestCase):
         self.assertNotIn("market_data_provider", config)
         self.assertEqual([ticker["provider"] for ticker in config["groups"][0]["tickers"]],
                          ["alpaca_iex", "yahoo", "yahoo"])
+
+    def test_manual_provider_mode_overrides_symbol_routing(self):
+        config = validate_config({"groups": [{"name": "Watch", "tickers": [
+            {"symbol": "AAPL", "provider_mode": "yahoo"},
+            {"symbol": "SIVE.ST", "provider_mode": "alpaca_iex"},
+        ]}]})
+        tickers = config["groups"][0]["tickers"]
+        self.assertEqual([ticker["provider"] for ticker in tickers], ["yahoo", "alpaca_iex"])
+        self.assertEqual([ticker["provider_mode"] for ticker in tickers], ["yahoo", "alpaca_iex"])
+        with self.assertRaisesRegex(ValueError, "数据源"):
+            validate_config({"groups": [{"name": "Watch", "tickers": [
+                {"symbol": "AAPL", "provider_mode": "unknown"},
+            ]}]})
 
     def test_fetch_interval_range_and_type(self):
         for invalid in (59, 86401, 60.5, True, "300"):

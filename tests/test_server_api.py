@@ -106,6 +106,20 @@ class ServerApiTests(unittest.TestCase):
         self.assertEqual(fetch.call_args.kwargs["provider"], "yahoo")
         self.assertEqual(payload["provider"], "yahoo")
 
+    def test_klines_route_uses_manual_provider_mode(self):
+        config = json.loads(self.config_path.read_text(encoding="utf-8"))
+        ticker = config["groups"][0]["tickers"][0]
+        ticker["provider_mode"] = "yahoo"
+        self.config_path.write_text(json.dumps(config), encoding="utf-8")
+        candles = [[1791479400, 10.0, 11.0, 9.0, 10.5, 100]]
+        with tempfile.TemporaryDirectory() as data_dir:
+            with patch.object(server, "KL_DIR", data_dir), \
+                    patch.object(server, "fetch_candles", return_value=(candles, {})) as fetch:
+                with urlopen(self.base_url + "/api/klines?symbol=" + ticker["symbol"] + "&tf=15m&refresh=1") as response:
+                    payload = json.load(response)
+        self.assertEqual(fetch.call_args.kwargs["provider"], "yahoo")
+        self.assertEqual(payload["provider"], "yahoo")
+
 
 if __name__ == "__main__":
     unittest.main()

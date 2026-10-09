@@ -112,7 +112,11 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return
 
         config = load_config(CONFIG)
-        provider = provider_for_symbol(symbol)
+        configured_providers = {
+            ticker["symbol"]: ticker["provider"]
+            for group in config["groups"] for ticker in group["tickers"]
+        }
+        provider = configured_providers.get(symbol, provider_for_symbol(symbol))
         interval, yahoo_range, ttl = TF_MAP[timeframe]
         path = kline_cache_path(KL_DIR, symbol, timeframe, provider)
 

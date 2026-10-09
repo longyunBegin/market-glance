@@ -63,9 +63,14 @@ def validate_config(payload):
                 raise ValueError("代码重复：%s" % symbol)
             seen.add(symbol)
             name = _label(ticker.get("name"), symbol, 24)
+            provider_mode = ticker.get("provider_mode", "auto")
+            if provider_mode not in ("auto", "alpaca_iex", "yahoo"):
+                raise ValueError("数据源必须是 auto、alpaca_iex 或 yahoo")
+            provider = (provider_for_symbol(symbol) if provider_mode == "auto"
+                        else provider_mode)
             normalized_tickers.append({
                 "symbol": symbol, "name": name,
-                "provider": provider_for_symbol(symbol),
+                "provider": provider, "provider_mode": provider_mode,
             })
         total += len(normalized_tickers)
         out.append({"name": group_name, "tickers": normalized_tickers})
