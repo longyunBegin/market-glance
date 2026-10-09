@@ -1,1 +1,24 @@
-{"anomaly_threshold_pct":3.0,"fetch_interval_secs":300,"groups":[{"name":"观察池","tickers":[{"name":"Marvell","symbol":"MRVL"},{"name":"Applied Opto","symbol":"AAOI"},{"name":"美光","symbol":"MU"},{"name":"英伟达","symbol":"NVDA"},{"name":"示例-斯德哥尔摩股票","symbol":"SIVE.ST"}]},{"name":"基准指数","tickers":[{"name":"纳斯达克100","symbol":"^NDX"},{"name":"标普500","symbol":"SPY"}]}],"www_port":8090}
+{
+  "anomaly_threshold_pct": 3.0,
+  "fetch_interval_secs": 300,
+  "www_port": 8090,
+  "groups": [
+    {
+      "name": "观察池",
+      "tickers": [
+        {"name": "Marvell", "symbol": "MRVL"},
+        {"name": "Applied Opto", "symbol": "AAOI"},
+        {"name": "美光", "symbol": "MU"},
+        {"name": "英伟达", "symbol": "NVDA"},
+        {"name": "示例-斯德哥尔摩股票", "symbol": "SIVE.ST"}
+      ]
+    },
+    {
+      "name": "基准指数",
+      "tickers": [
+        {"name": "纳斯达克100", "symbol": "^NDX"},
+        {"name": "标普500", "symbol": "SPY"}
+      ]
+    }
+  ]
+}

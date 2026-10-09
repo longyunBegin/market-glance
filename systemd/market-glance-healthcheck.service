@@ -1,9 +1,9 @@
 [Unit]
-Description=market-glance healthcheck (restart www if :8090 unresponsive)
+Description=Market Glance health check
 After=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=/home/hatch/workspace/market-glance/healthcheck.sh
+ExecStart=@APP_DIR@/healthcheck.sh
 StandardOutput=journal
 StandardError=journal

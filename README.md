@@ -1,59 +1,60 @@
 # Market Glance 盘前哨
 
-个人行情看板：一眼看完跨市场行情、观察池异动扫描、一键切换 K 线。
+个人行情看板：查看跨市场行情、观察池、异动扫描和 K 线。桌面端为三栏布局，窄屏会自动改为双栏或单栏。基准行情带、观察池和异动区会分配显示标的，避免同一标的在多个区重复出现。
 
-![三栏布局](docs/screenshot.png)
+## 功能与架构
 
-三栏布局（类似 r/wallstreetbets 的盘前 widget）：
-
-- **跨市场一眼**（左栏）：观察池 + 基准指数，价格、涨跌幅、相对上个常规收盘价的涨跌
-- **异动扫描**（中栏）：按绝对涨跌幅阈值（默认 3%，页面可改）筛出异动标的
-- **K 线**（右栏）：点击任意 ticker 切换；支持 5分（近2日）/ 15分（近1月）/ 日K（近1年），含盘前盘后，均线（MA20/50）、成交量、前收参考线
-
-架构三层，各司其职，纯标准库零依赖：
-
-```
-Yahoo Finance（非官方接口，延迟约 1~3 分钟）
+```text
+Yahoo Finance（非官方接口，约 1～3 分钟延迟）
     │
-fetch.py ── 每 5 分钟抓一次 ──→ data/quotes.json + data/klines/*.json
-    │（systemd timer 驱动；失败保留最后成功值并标 stale）
-server.py ── 静态页面 + /api/config（读写观察列表）+ /api/klines（按需抓 15m/日K 并缓存）
+fetch.py ── 读取 config.json 的抓取间隔 ──→ data/quotes.json + data/klines/*.json
+    │                                             ↑
+    └── systemd timer 每分钟检查一次；未到配置间隔时不访问行情源
+                                                  │
+server.py ── 页面服务 + /api/config + /api/klines + /api/market-status
     │
-index.html ── 单页三栏看板（lightweight-charts 内联，无外部依赖）
+index.html ── 同源单页看板（lightweight-charts 内联，无外部运行时依赖）
 ```
+
+- **K 线**：5 分钟、15 分钟、日线；包括盘前盘后、成交量、MA20/50 和前收参考线。浏览器 K 线缓存会过期，刷新按钮可跳过缓存；过期请求不会覆盖后来选中的标的。
+- **市场状态**：按美东时区识别周末、NYSE 常规假日、盘前/盘中/盘后和常见提前收市日。特殊临时休市不在年度规则表内。
+- **安全渲染**：可编辑分组名和显示名通过 DOM 文本/表单属性渲染，不拼接到 HTML。
+- **失败回退**：抓取失败时保留最后成功行情并标记旧数据。
 
 ## 安装
 
-需要一台 Linux 机器（或云主机 / VM），Python 3.8+ 即可，无其他依赖。
+需要 Linux、Python 3.9+ 和 systemd，无第三方 Python 依赖。建议将仓库放在不含空格的目录中；安装脚本会从当前仓库目录生成 systemd 单元，不依赖某个固定用户或路径。
 
 ```bash
 git clone https://github.com/longyunBegin/market-glance.git
 cd market-glance
-
-# 1) 准备配置：复制示例，填上你想看的代码
 cp config.example.json config.json
-
-# 2) 装 systemd 服务（抓取 timer + 页面服务 + 健康检查）
-bash systemd/install.sh
-
-# 3) 在浏览器打开（默认端口 8090，可在 config.json 改 www_port）
-#    http://<你的机器IP>:8090
+# 按需编辑 config.json
+sudo bash systemd/install.sh
 ```
 
-如果你想和作者一样"云主机跑服务、Mac 本地浏览器看"，把页面端口经 SSH 反向隧道映射到桌面机器即可：
+默认网页服务只监听 `127.0.0.1`，可在本机打开 `http://127.0.0.1:8090`。需要从另一台机器访问时，建议配置 SSH 隧道；如需直接暴露网络端口，应自行配置防火墙和访问控制。
+
+### 可选 SSH 隧道
+
+安装脚本默认不会启用隧道。需要隧道时，先在系统本机配置命令：
 
 ```bash
-# 在云主机上（隧道断线自动重连）
-bash tunnel.sh   # 默认命令按 Tailscale 场景写死，可用 TUNNEL_CMD 环境变量覆盖
-# 然后在 Mac 浏览器打开 http://localhost:8090
+sudo install -m 600 /dev/null /etc/default/market-glance-tunnel
+sudoedit /etc/default/market-glance-tunnel
 ```
+
+文件内容示例（把地址和参数改成自己的环境）：
+
+```ini
+TUNNEL_CMD="ssh -N -T -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o ExitOnForwardFailure=yes -R 8090:localhost:8090 user@your-host"
+```
+
+之后执行 `sudo ENABLE_TUNNEL=1 bash systemd/install.sh`。隧道断开后脚本会重试；不再需要时可运行 `sudo systemctl disable --now market-glance-tunnel.service`。
 
 ## 配置
 
-观察列表有两种改法：
-
-1. **页面上直接改**：打开页面点右上角 ⚙️，分组 / ticker 都可增删，保存后服务端立刻重抓。
-2. **改 config.json**：编辑后等下一轮 5 分钟抓取，或手动 `systemctl start market-glance-fetch.service`。
+`config.json` 是每台机器自己的配置，已加入 Git 忽略规则；仓库只保存 `config.example.json`。页面右上角齿轮可编辑分组、代码、显示名、异动阈值和抓取间隔。
 
 ```json
 {
@@ -61,48 +62,66 @@ bash tunnel.sh   # 默认命令按 Tailscale 场景写死，可用 TUNNEL_CMD �
   "fetch_interval_secs": 300,
   "www_port": 8090,
   "groups": [
-    { "name": "观察池", "tickers": [{ "name": "显示名", "symbol": "AAPL" }] }
+    {"name": "观察池", "tickers": [{"name": "显示名", "symbol": "AAPL"}]}
   ]
 }
 ```
 
-- `symbol` 是 Yahoo Finance 代码：美股 `AAPL`、斯德哥尔摩 `SIVE.ST`、指数 `^NDX` / `^IXIC`、美债 `^TNX`、波动率 `^VIX`
-- `anomaly_threshold_pct`：异动阈值（绝对涨跌幅 ≥ 该值进中栏）
-- `fetch_interval_secs`：抓取间隔（秒），timer 按此值调度
+- `anomaly_threshold_pct`：异动区阈值，范围 `0.1`～`50`。
+- `fetch_interval_secs`：实际行情抓取间隔，范围 `60`～`86400` 秒；timer 每分钟唤醒一次，脚本依据该值决定是否访问 Yahoo。
+- `www_port`：网页服务端口，范围 `1024`～`65535`。若手动修改端口，需重启网页服务：`sudo systemctl restart market-glance-www.service`。
+- `symbol` 使用 Yahoo Finance 代码，例如美股 `AAPL`、斯德哥尔摩 `SIVE.ST`、指数 `^NDX` / `^IXIC`、美债 `^TNX`、波动率 `^VIX`。
+
+页面保存观察池后会立即触发一次抓取；只改阈值或抓取间隔不会额外访问行情源。也可手动强制抓取：
+
+```bash
+python3 fetch.py --force
+```
 
 ## 数据说明
 
-- 数据源：Yahoo Finance 非官方 chart 接口（无需 API key），延迟约 1~3 分钟，含盘前盘后
-- 涨跌幅基准：按美东上一个常规交易日 16:00 前最后一根 K 线计算前收（`chartPreviousClose` 在含盘前数据时不可靠，未采用）
-- 抓取失败时保留最后一次成功值并标记 `stale`，页面上会灰显并带"旧"标记；连续失败也不会清空
-- Yahoo 对突发请求敏感（共享出口 IP 容易 429）：已内置 5 秒 pacing + 429 退避 30 秒重试
-- 图表库：TradingView 开源 [lightweight-charts](https://github.com/tradingview/lightweight-charts) v4.2.0（Apache-2.0），已内联到 `assets/`，页面全同源无外部依赖
+- 涨跌幅相对上一个常规收盘价；Yahoo 的含盘前数据时 `chartPreviousClose` 不可靠，因此优先从 K 线计算前收。
+- Yahoo 对突发请求敏感；抓取脚本使用 5 秒 pacing，并在 429 时退避重试。
+- 15 分钟 K 线缓存 15 分钟，日线缓存 1 小时；5 分钟 K 线由定时抓取任务更新，浏览器每 30 秒检查一次文件。
+- 图表库为 TradingView 开源 [lightweight-charts](https://github.com/tradingview/lightweight-charts) v4.2.0（Apache-2.0），已内联到 `assets/`。
 
-## 服务清单（systemd）
+## systemd 服务
 
-| 服务 | 作用 |
+| 单元 | 作用 |
 |---|---|
-| `market-glance-fetch.timer` | 每 5 分钟驱动 `fetch.py` 抓行情 |
-| `market-glance-www.service` | 页面服务（:8090，静态 + API） |
-| `market-glance-tunnel.service` | SSH 反向隧道（可选，桌面本地看时用） |
-| `market-glance-healthcheck.timer` | 每 10 分钟自检：:8090 无响应则重启 www |
+| `market-glance-fetch.timer` | 每分钟检查是否到达配置中的抓取间隔 |
+| `market-glance-www.service` | 页面和 API 服务 |
+| `market-glance-tunnel.service` | 可选 SSH 隧道，默认不启用 |
+| `market-glance-healthcheck.timer` | 每 10 分钟检查网页端口并在无响应时重启服务 |
 
-VM 整体重建后重跑一次 `bash systemd/install.sh` 即可恢复全部服务。
+迁移或重建安装目录后，在新目录重新运行 `bash systemd/install.sh` 即可重新生成带有实际路径的 unit。代理环境变量由安装脚本注入 systemd manager 环境，不会写入仓库文件。
+
+## 测试
+
+运行标准库测试：
+
+```bash
+python3 -m unittest discover -s tests -v
+```
+
+测试覆盖配置边界、抓取间隔门控、K 线缓存 TTL、安装路径生成、前端安全渲染和市场假日/时段计算。
 
 ## 目录结构
 
-```
+```text
 market-glance/
-├── index.html          单页看板（前端）
-├── fetch.py            行情抓取（stdlib 零依赖）
-├── server.py           页面服务 + API（stdlib 零依赖）
-├── config.json         观察列表配置（复制 config.example.json 生成）
+├── index.html          单页看板
+├── fetch.py            行情抓取及间隔门控
+├── server.py           静态页面和 JSON API
+├── config_model.py     配置默认值与校验
+├── market_calendar.py  美股常规假日与交易时段
 ├── config.example.json 配置示例
-├── assets/             内联的 lightweight-charts v4.2.0
-├── data/               运行时数据（gitignore，不提交）
-├── systemd/            systemd 服务定义 + install.sh
-├── healthcheck.sh      健康检查
-└── tunnel.sh           SSH 反向隧道（可选）
+├── assets/             内联图表库
+├── data/               运行时行情数据（Git 忽略）
+├── systemd/            unit 模板与安装脚本
+├── tests/              回归测试
+├── healthcheck.sh      本机网页健康检查
+└── tunnel.sh           可选 SSH 隧道
 ```
 
 ## License

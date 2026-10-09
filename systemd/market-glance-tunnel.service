@@ -1,13 +1,13 @@
 [Unit]
-Description=market-glance SSH reverse tunnel (Mac localhost:8090 -> VM :8090)
+Description=Optional Market Glance SSH reverse tunnel
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-# tunnel.sh 内部已有断线重连循环；systemd Restart 兜底脚本本身退出
-ExecStart=/home/hatch/workspace/market-glance/tunnel-local.sh
-Restart=always
+EnvironmentFile=-/etc/default/market-glance-tunnel
+ExecStart=@APP_DIR@/tunnel.sh
+Restart=on-failure
 RestartSec=15
 StandardOutput=journal
 StandardError=journal

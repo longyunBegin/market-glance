@@ -1,15 +1,19 @@
 #!/bin/bash
-# market-glance 健康检查（由 market-glance-healthcheck.timer 每 10 分钟跑一次）：
-#  - 页面服务 :8090 无响应（进程假死）→ 重启 www 服务
-#  - 隧道服务不在运行 → 拉起
-# 进程崩溃由 systemd Restart=always 兜底；本脚本只处理"活着但没响应"的情况。
+# Restart the web service if its configured local port stops responding.
 set -u
-if ! curl -fsS -m 10 -o /dev/null http://127.0.0.1:8090/; then
-  echo "$(date '+%F %T') 页面 :8090 无响应，重启 market-glance-www.service"
+APP_DIR="$(cd "$(dirname "$0")" && pwd -P)"
+PORT="$(python3 - "$APP_DIR/config.json" <<'PY'
+import json
+import sys
+try:
+    with open(sys.argv[1], encoding="utf-8") as stream:
+        print(json.load(stream).get("www_port", 8090))
+except Exception:
+    print(8090)
+PY
+)"
+if ! curl -fsS -m 10 -o /dev/null "http://127.0.0.1:${PORT}/"; then
+  echo "$(date '+%F %T') 页面 :${PORT} 无响应，重启 market-glance-www.service"
   systemctl restart market-glance-www.service || true
-fi
-if ! systemctl is-active -q market-glance-tunnel.service; then
-  echo "$(date '+%F %T') 隧道服务未运行，尝试启动 market-glance-tunnel.service"
-  systemctl start market-glance-tunnel.service || true
 fi
 exit 0

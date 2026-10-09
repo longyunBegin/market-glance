@@ -1,15 +1,13 @@
 [Unit]
-Description=market-glance fetcher (Yahoo -> JSON)
+Description=Market Glance fetcher (Yahoo Finance to JSON)
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=oneshot
-# 出口代理（含凭证）由 install.sh 经 `systemctl set-environment` 注入 systemd
-# manager 内存，不写进任何文件（凭证不落盘）；VM 重建后重跑 install.sh 即可。
-# 这里只保留 no_proxy（无敏感信息）。
+# The installer renders @APP_DIR@ from this checkout's actual location.
 Environment=no_proxy=localhost,127.0.0.1,::1,[::1],198.19.0.1,198.19.0.2
 Environment=NO_PROXY=localhost,127.0.0.1,::1,[::1],198.19.0.1,198.19.0.2
-ExecStart=/usr/bin/python3 /home/hatch/workspace/market-glance/fetch.py
+ExecStart=/usr/bin/python3 @APP_DIR@/fetch.py
 StandardOutput=journal
 StandardError=journal

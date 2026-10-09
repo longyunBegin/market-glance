@@ -1,17 +1,14 @@
 [Unit]
-Description=market-glance dashboard server (port 8090, static + /api/config + /api/klines)
+Description=Market Glance dashboard server
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-WorkingDirectory=/home/hatch/workspace/market-glance
-# 出口代理（含凭证）由 install.sh 经 `systemctl set-environment` 注入 systemd
-# manager 内存，不写进任何文件（凭证不落盘）；VM 重建后重跑 install.sh 即可。
-# 保存配置 / 切换 15m、日K 时后台抓 Yahoo 需要走这个代理。
+WorkingDirectory=@APP_DIR@
 Environment=no_proxy=localhost,127.0.0.1,::1,[::1],198.19.0.1,198.19.0.2
 Environment=NO_PROXY=localhost,127.0.0.1,::1,[::1],198.19.0.1,198.19.0.2
-ExecStart=/usr/bin/python3 /home/hatch/workspace/market-glance/server.py
+ExecStart=/usr/bin/python3 @APP_DIR@/server.py
 Restart=always
 RestartSec=5
 StandardOutput=journal

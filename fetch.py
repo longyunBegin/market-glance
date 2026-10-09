@@ -1,20 +1,21 @@
 #!/usr/bin/env python3
-"""market-glance fetcher: Yahoo Finance -> data/quotes.json + data/klines/<SYM>.json.
-
-只干一件事：拉行情，写 JSON。不做任何计算、不推送、不发通知。
-纯标准库，零依赖。由 systemd timer 每 5 分钟调用一次。
-"""
+"""Fetch Yahoo Finance quotes and write atomic JSON snapshots."""
+import argparse
+import fcntl
 import json
 import os
+import tempfile
 import time
 import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
 
+from config_model import load_config
+
 try:
     from zoneinfo import ZoneInfo
     ET = ZoneInfo("America/New_York")
-except Exception:  # noqa: BLE001
+except Exception:  # pragma: no cover - supported Python versions include zoneinfo
     ET = timezone(timedelta(hours=-4))
 
 BASE = os.path.dirname(os.path.abspath(__file__))
@@ -22,132 +23,180 @@ UA = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit
 
 
 def get(url):
-    req = urllib.request.Request(url, headers=UA)
-    with urllib.request.urlopen(req, timeout=20) as r:
-        return json.load(r)
+    request = urllib.request.Request(url, headers=UA)
+    with urllib.request.urlopen(request, timeout=20) as response:
+        return json.load(response)
 
 
 def kline_filename(symbol):
     return symbol.replace("^", "_").replace(".", "_") + ".json"
 
 
-def fetch_candles(sym, interval, rng):
-    """拉 Yahoo chart 接口，返回 (candles, meta)。
-    candles 为 [ts, o, h, l, c, v] 列表（ts 为秒级时间戳），meta 为原样返回的元信息。
-    """
-    enc = urllib.parse.quote(sym, safe="")
+def fetch_candles(symbol, interval, period):
+    """Return candles [[ts, o, h, l, c, v], ...] and Yahoo metadata."""
+    encoded = urllib.parse.quote(symbol, safe="")
     url = ("https://query1.finance.yahoo.com/v8/finance/chart/%s"
-           "?interval=%s&range=%s&includePrePost=true" % (enc, interval, rng))
-    d = get(url)
-    r = d["chart"]["result"][0]
-    m = r["meta"]
-    ts = r["timestamp"] or []
-    q = r["indicators"]["quote"][0]
-    vol = q.get("volume") or []
+           "?interval=%s&range=%s&includePrePost=true" % (encoded, interval, period))
+    data = get(url)
+    result = data["chart"]["result"][0]
+    metadata = result["meta"]
+    timestamps = result["timestamp"] or []
+    quote = result["indicators"]["quote"][0]
+    volume = quote.get("volume") or []
     candles = []
-    for i, tt in enumerate(ts):
-        o, h, l, c = q["open"][i], q["high"][i], q["low"][i], q["close"][i]
-        if o is None or h is None or l is None or c is None:
+    for index, timestamp in enumerate(timestamps):
+        open_price = quote["open"][index]
+        high = quote["high"][index]
+        low = quote["low"][index]
+        close = quote["close"][index]
+        if open_price is None or high is None or low is None or close is None:
             continue
-        v = vol[i] if i < len(vol) and vol[i] is not None else 0
-        candles.append([tt, round(o, 2), round(h, 2), round(l, 2), round(c, 2), int(v)])
-    return candles, m
+        vol = volume[index] if index < len(volume) and volume[index] is not None else 0
+        candles.append([timestamp, round(open_price, 2), round(high, 2),
+                        round(low, 2), round(close, 2), int(vol)])
+    return candles, metadata
 
 
-def fetch_one(sym, name, group):
-    """拉单个 ticker，返回 quote dict；失败抛异常。"""
-    candles, m = fetch_candles(sym, "5m", "2d")
-    ts = [c[0] for c in candles]
-    # 前收：上一个常规交易时段收盘价（昨日美东 16:00 前最后一根），
-    # chartPreviousClose 在含盘前数据时不可靠，不用它。
+def fetch_one(symbol, name, group):
+    """Fetch one symbol and return (quote, candles)."""
+    candles, metadata = fetch_candles(symbol, "5m", "2d")
+    timestamps = [candle[0] for candle in candles]
     midnight_et = datetime.now(ET).replace(hour=0, minute=0, second=0, microsecond=0)
-    yday_close_ts = int(midnight_et.timestamp()) - 8 * 3600  # 昨日 16:00 ET
+    yesterday_close_ts = int(midnight_et.timestamp()) - 8 * 3600
     day_start_ts = int(midnight_et.timestamp())
-    prev = None
-    closes = [c[4] for c in candles]
-    for i in range(len(ts) - 1, -1, -1):
-        if ts[i] <= yday_close_ts and closes[i]:
-            prev = closes[i]
+    previous = None
+    closes = [candle[4] for candle in candles]
+    for index in range(len(timestamps) - 1, -1, -1):
+        if timestamps[index] <= yesterday_close_ts and closes[index]:
+            previous = closes[index]
             break
-    if prev is None:  # 周末/假日兜底：今日 00:00 ET 之前最后一根
-        for i in range(len(ts) - 1, -1, -1):
-            if ts[i] < day_start_ts and closes[i]:
-                prev = closes[i]
+    if previous is None:
+        for index in range(len(timestamps) - 1, -1, -1):
+            if timestamps[index] < day_start_ts and closes[index]:
+                previous = closes[index]
                 break
-    if prev is None:
-        prev = m.get("chartPreviousClose") or m.get("previousClose")
+    if previous is None:
+        previous = metadata.get("chartPreviousClose") or metadata.get("previousClose")
     last = closes[-1] if closes else None
-    chg = (last / prev - 1) * 100 if (last and prev) else None
+    change = (last / previous - 1) * 100 if last and previous else None
     return {
-        "symbol": sym, "name": name, "group": group,
+        "symbol": symbol, "name": name, "group": group,
         "price": round(last, 2) if last is not None else None,
-        "chg_pct": round(chg, 2) if chg is not None else None,
-        "prev_close": prev,
+        "chg_pct": round(change, 2) if change is not None else None,
+        "prev_close": previous,
     }, candles
 
 
-def main():
-    cfg = json.load(open(os.path.join(BASE, "config.json")))
-    data_dir = os.path.join(BASE, "data")
-    kl_dir = os.path.join(data_dir, "klines")
-    os.makedirs(kl_dir, exist_ok=True)
+def fetch_is_due(interval_secs, last_attempt, now=None):
+    """Whether an interval-based fetch should run; missing timestamps are due."""
+    now = time.time() if now is None else now
+    return last_attempt is None or now - last_attempt >= interval_secs
 
-    # 上次成功的数据：本轮失败时保留旧值（标 stale），不拿 null 覆盖
-    prev_quotes = {}
-    pq_path = os.path.join(data_dir, "quotes.json")
-    if os.path.exists(pq_path):
+
+def _atomic_json(path, payload):
+    directory = os.path.dirname(path)
+    os.makedirs(directory, exist_ok=True)
+    fd, temporary = tempfile.mkstemp(prefix=".market-glance-", suffix=".tmp", dir=directory)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as stream:
+            json.dump(payload, stream, ensure_ascii=False)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+    finally:
         try:
-            prev_quotes = {q["symbol"]: q for q in json.load(open(pq_path))["quotes"]}
-        except Exception:  # noqa: BLE001
+            os.unlink(temporary)
+        except FileNotFoundError:
             pass
 
-    quotes = []
-    now = int(time.time())
-    for group in cfg["groups"]:
-        for t in group["tickers"]:
-            sym = t["symbol"]
-            name, gname = t.get("name", sym), group["name"]
-            err = None
-            quote = None
-            for attempt in (1, 2):
-                try:
-                    quote, candles = fetch_one(sym, name, gname)
-                    break
-                except Exception as e:  # noqa: BLE001
-                    err = str(e)[:120]
-                    if "429" in err and attempt == 1:
-                        time.sleep(30)  # 限流退避后重试一次（出口 IP 是共享的，温柔一点）
-                    else:
-                        break
-            if quote is not None:
-                quote["stale"] = False
-                quote["last_success_at"] = now
-                quote.pop("stale_since", None)
-                quotes.append(quote)
-                json.dump({"symbol": sym, "candles": candles},
-                          open(os.path.join(kl_dir, kline_filename(sym)), "w"))
-            else:
-                # 失败时保留最后一次成功值（连续失败也不丢），标 stale + stale_since
-                old = prev_quotes.get(sym)
-                if old and old.get("price") is not None:
-                    old = dict(old)
-                    old["name"], old["group"] = name, gname
-                    old["stale"] = True
-                    old.setdefault("stale_since", now)
-                    quotes.append(old)
-                else:
-                    quotes.append({
-                        "symbol": sym, "name": name, "group": gname,
-                        "price": None, "chg_pct": None, "error": err,
-                    })
-            time.sleep(5.0)  # 轻 pacing，别触发限流（出口 IP 是共享的，Yahoo 对突发很敏感）
 
-    json.dump({"updated": int(time.time()),
-               "anomaly_threshold_pct": cfg.get("anomaly_threshold_pct", 3.0),
-               "quotes": quotes},
-              open(os.path.join(data_dir, "quotes.json"), "w"))
-    ok = sum(1 for x in quotes if x["price"] is not None)
-    print("ok: %d/%d tickers" % (ok, len(quotes)))
+def _last_attempt(path):
+    try:
+        with open(path, encoding="utf-8") as stream:
+            return float(json.load(stream)["timestamp"])
+    except (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError):
+        return None
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description="Fetch market quotes")
+    parser.add_argument("--force", action="store_true", help="ignore the configured fetch interval")
+    args = parser.parse_args(argv)
+
+    config = load_config(os.path.join(BASE, "config.json"))
+    data_dir = os.path.join(BASE, "data")
+    klines_dir = os.path.join(data_dir, "klines")
+    os.makedirs(klines_dir, exist_ok=True)
+    lock_path = os.path.join(data_dir, ".fetch.lock")
+    last_attempt_path = os.path.join(data_dir, ".last-fetch-at.json")
+
+    with open(lock_path, "w", encoding="utf-8") as lock_file:
+        try:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            print("skip: another fetch is already running")
+            return
+
+        now = time.time()
+        if not args.force and not fetch_is_due(config["fetch_interval_secs"],
+                                               _last_attempt(last_attempt_path), now):
+            print("skip: next fetch is due in %d seconds" % max(
+                0, int(config["fetch_interval_secs"] - (now - _last_attempt(last_attempt_path)))))
+            return
+        _atomic_json(last_attempt_path, {"timestamp": now})
+
+        previous_quotes = {}
+        quotes_path = os.path.join(data_dir, "quotes.json")
+        if os.path.exists(quotes_path):
+            try:
+                with open(quotes_path, encoding="utf-8") as stream:
+                    previous_quotes = {quote["symbol"]: quote
+                                       for quote in json.load(stream)["quotes"]}
+            except Exception:  # noqa: BLE001
+                pass
+
+        quotes = []
+        for group in config["groups"]:
+            for ticker in group["tickers"]:
+                symbol = ticker["symbol"]
+                name, group_name = ticker["name"], group["name"]
+                error = None
+                quote = None
+                for attempt in (1, 2):
+                    try:
+                        quote, candles = fetch_one(symbol, name, group_name)
+                        break
+                    except Exception as exc:  # noqa: BLE001
+                        error = str(exc)[:120]
+                        if "429" in error and attempt == 1:
+                            time.sleep(30)
+                        else:
+                            break
+                if quote is not None:
+                    quote["stale"] = False
+                    quote["last_success_at"] = int(now)
+                    quote.pop("stale_since", None)
+                    quotes.append(quote)
+                    _atomic_json(os.path.join(klines_dir, kline_filename(symbol)),
+                                 {"symbol": symbol, "candles": candles})
+                else:
+                    old = previous_quotes.get(symbol)
+                    if old and old.get("price") is not None:
+                        old = dict(old)
+                        old["name"], old["group"] = name, group_name
+                        old["stale"] = True
+                        old.setdefault("stale_since", int(now))
+                        quotes.append(old)
+                    else:
+                        quotes.append({"symbol": symbol, "name": name, "group": group_name,
+                                       "price": None, "chg_pct": None, "error": error})
+                time.sleep(5.0)
+
+        _atomic_json(quotes_path, {"updated": int(time.time()),
+                                   "anomaly_threshold_pct": config["anomaly_threshold_pct"],
+                                   "quotes": quotes})
+        successful = sum(1 for quote in quotes if quote["price"] is not None)
+        print("ok: %d/%d tickers" % (successful, len(quotes)))
 
 
 if __name__ == "__main__":

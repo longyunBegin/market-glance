@@ -1,5 +1,5 @@
 [Unit]
-Description=Run market-glance healthcheck every 10 minutes
+Description=Check Market Glance web service every 10 minutes
 
 [Timer]
 OnBootSec=3min

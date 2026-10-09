@@ -9,58 +9,74 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background: #f4f5f7; color: #1a1a1a; font-size: 14px; }
   header { background: #fff; border-bottom: 1px solid #e2e4e8; padding: 10px 16px; display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 10; }
-  header h1 { font-size: 17px; font-weight: 700; }
+  header h1 { font-size: 17px; font-weight: 700; white-space: nowrap; }
   .stage { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #555; }
-  .dot { width: 8px; height: 8px; border-radius: 50%; background: #e0a800; }
+  .dot { width: 8px; height: 8px; flex: 0 0 8px; border-radius: 50%; background: #e0a800; }
   .dot.open { background: #22a355; } .dot.closed { background: #999; }
-  .tape { background: #fff; border-bottom: 1px solid #e2e4e8; overflow-x: auto; white-space: nowrap; padding: 8px 0; }
+  .tape { background: #fff; border-bottom: 1px solid #e2e4e8; overflow-x: auto; white-space: nowrap; padding: 8px 0; min-height: 37px; }
   .tape-item { display: inline-block; padding: 2px 14px; border-right: 1px solid #eee; font-size: 13px; cursor: pointer; }
   .tape-item b { font-weight: 700; } .tape-item .pr { color: #333; margin-left: 6px; }
-  .up { color: #22a355; } .down { color: #d93025; }
-  main { display: grid; grid-template-columns: 300px 300px 1fr; gap: 12px; padding: 12px 16px; max-width: 1400px; margin: 0 auto; }
-  @media (max-width: 1000px) { main { grid-template-columns: 1fr; } }
-  .panel { background: #fff; border: 1px solid #e2e4e8; border-radius: 8px; padding: 12px; }
+  .up { color: #168447; } .down { color: #c62828; }
+  main { display: grid; grid-template-columns: minmax(230px, .9fr) minmax(230px, .9fr) minmax(0, 1.8fr); gap: 12px; padding: 12px 16px; max-width: 1500px; margin: 0 auto; }
+  @media (max-width: 1120px) { main { grid-template-columns: minmax(220px, 1fr) minmax(220px, 1fr); } main > section:last-child { grid-column: 1 / -1; } }
+  @media (max-width: 700px) {
+    header { flex-wrap: wrap; gap: 7px 10px; padding: 9px 12px; }
+    header h1 { font-size: 16px; }
+    .stage { font-size: 12px; }
+    #updated { margin-left: auto !important; }
+    main { grid-template-columns: minmax(0, 1fr); gap: 9px; padding: 9px; }
+    main > section:last-child { grid-column: auto; }
+    .panel { padding: 10px; }
+    .chead { align-items: flex-start; gap: 8px; flex-wrap: wrap; }
+    .tfbar { flex-wrap: wrap; }
+    #chart { height: 320px; }
+    .modal { max-height: 92vh; }
+  }
+  .panel { min-width: 0; background: #fff; border: 1px solid #e2e4e8; border-radius: 8px; padding: 12px; }
   .panel h2 { font-size: 12px; letter-spacing: .05em; color: #777; margin-bottom: 8px; font-weight: 600; }
   .panel h2 .cn { color: #aaa; font-weight: 400; margin-left: 6px; }
   .grp { font-size: 12px; color: #999; margin: 10px 0 4px; }
-  .row { display: flex; justify-content: space-between; align-items: center; padding: 7px 6px; border-radius: 6px; cursor: pointer; }
+  .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 7px 6px; border-radius: 6px; cursor: pointer; }
   .row:hover { background: #f0f4ff; } .row.active { background: #e8efff; }
   .row.stale { opacity: .55; }
   .row .st { font-size: 10px; color: #fff; background: #b0b0b0; border-radius: 3px; padding: 1px 4px; margin-left: 6px; }
-  .row .sym { font-weight: 700; } .row .nm { color: #888; font-size: 12px; margin-left: 6px; }
-  .row .qt { text-align: right; } .row .qt .p { font-weight: 600; } .row .qt .c { font-size: 12px; }
+  .row .sym { font-weight: 700; overflow-wrap: anywhere; } .row .nm { color: #888; font-size: 12px; margin-left: 6px; overflow-wrap: anywhere; }
+  .row .qt { text-align: right; flex: 0 0 auto; } .row .qt .p { font-weight: 600; } .row .qt .c { font-size: 12px; }
   .thr { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-size: 12px; color: #777; }
-  .thr input { width: 52px; padding: 3px 6px; border: 1px solid #ddd; border-radius: 4px; }
-  #chart { width: 100%; height: 380px; }
-  .chead { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+  .thr input { width: 58px; padding: 3px 6px; border: 1px solid #ddd; border-radius: 4px; }
+  #chart { width: 100%; height: clamp(320px, 35vw, 460px); }
+  .chead { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 6px; }
   .chead .t { font-size: 16px; font-weight: 700; } .chead .t .c { font-size: 13px; margin-left: 8px; }
   .tfbar { display: flex; gap: 4px; align-items: center; font-size: 12px; color: #999; }
-  .tfbtn { border: 1px solid #ddd; background: #fff; border-radius: 5px; font-size: 12px; padding: 3px 10px; cursor: pointer; color: #555; }
+  .tfbtn { border: 1px solid #ddd; background: #fff; border-radius: 5px; font-size: 12px; padding: 4px 9px; cursor: pointer; color: #555; white-space: nowrap; }
   .tfbtn.on { background: #1a73e8; border-color: #1a73e8; color: #fff; }
   footer { text-align: center; color: #999; font-size: 12px; padding: 14px; }
   .err { color: #999; font-size: 12px; }
-  .gear { margin-left: auto; border: 1px solid #ddd; background: #fff; border-radius: 6px; font-size: 15px; padding: 3px 9px; cursor: pointer; }
+  .gear { margin-left: auto; border: 1px solid #ddd; background: #fff; border-radius: 6px; font-size: 15px; padding: 4px 9px; cursor: pointer; }
   .gear:hover { background: #f0f4ff; }
-  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: none; align-items: center; justify-content: center; z-index: 50; }
+  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: none; align-items: center; justify-content: center; z-index: 50; padding: 10px; }
   .modal-bg.open { display: flex; }
-  .modal { background: #fff; border-radius: 10px; width: 520px; max-width: 94vw; max-height: 86vh; overflow-y: auto; padding: 18px; }
+  .modal { background: #fff; border-radius: 10px; width: 560px; max-width: 94vw; max-height: 86vh; overflow-y: auto; padding: 18px; }
   .modal h3 { font-size: 15px; margin-bottom: 4px; }
   .modal .hint { font-size: 12px; color: #888; margin-bottom: 12px; }
+  .cfg-settings { display: flex; flex-wrap: wrap; gap: 10px 16px; margin-bottom: 12px; padding: 10px; background: #f7f8fa; border-radius: 7px; font-size: 12px; color: #666; }
+  .cfg-settings label { display: flex; align-items: center; gap: 6px; }
+  .cfg-settings input { width: 100px; padding: 5px 7px; border: 1px solid #ddd; border-radius: 5px; }
   .cfg-grp { border: 1px solid #e6e8ec; border-radius: 8px; padding: 10px; margin-bottom: 10px; }
   .cfg-grp .grow { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
-  .cfg-grp input.gname { flex: 1; padding: 5px 8px; border: 1px solid #ddd; border-radius: 5px; font-size: 13px; }
+  .cfg-grp input.gname { flex: 1; min-width: 0; padding: 5px 8px; border: 1px solid #ddd; border-radius: 5px; font-size: 13px; }
   .cfg-grp textarea { width: 100%; height: 110px; padding: 6px 8px; border: 1px solid #ddd; border-radius: 5px; font-family: ui-monospace, monospace; font-size: 12.5px; resize: vertical; }
-  .cfg-grp .del { border: 1px solid #f0c0c0; background: #fff; color: #d93025; border-radius: 5px; font-size: 12px; padding: 4px 8px; cursor: pointer; }
+  .cfg-grp .del { border: 1px solid #f0c0c0; background: #fff; color: #d93025; border-radius: 5px; font-size: 12px; padding: 5px 8px; cursor: pointer; }
   .mrow { display: flex; gap: 8px; margin-top: 10px; }
   .btn { border: 1px solid #ddd; background: #fff; border-radius: 6px; font-size: 13px; padding: 7px 14px; cursor: pointer; }
   .btn.primary { background: #1a73e8; border-color: #1a73e8; color: #fff; }
   .btn:hover { filter: brightness(.96); }
   .cfg-msg { font-size: 12px; margin-top: 8px; min-height: 16px; }
-  .cfg-msg.ok { color: #22a355; } .cfg-msg.bad { color: #d93025; }
+  .cfg-msg.ok { color: #168447; } .cfg-msg.bad { color: #c62828; }
   .stalebar { display: none; background: #fff4d6; border-bottom: 1px solid #f0dfa8; color: #8a6d00; font-size: 12.5px; padding: 7px 16px; }
-  .subbar { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #888; min-height: 18px; margin-bottom: 4px; }
+  .subbar { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 12px; color: #888; min-height: 22px; margin-bottom: 4px; }
   .subbar .ohlc { color: #666; }
-  .subbar .cnote { color: #e0a800; margin-left: 10px; }
+  .subbar .cnote { color: #b07b00; margin-left: 10px; }
   .subbar .mato { cursor: pointer; user-select: none; white-space: nowrap; }
 </style>
 </head>
@@ -72,32 +88,35 @@
   <button class="gear" id="gear" title="配置观察列表">⚙️</button>
 </header>
 <div class="stalebar" id="stalebar"></div>
-<div class="tape" id="tape"></div>
+<div class="tape" id="tape" aria-label="市场基准行情"></div>
 <main>
-  <section class="panel"><h2>MARKET OVERVIEW<span class="cn">跨市场一眼</span></h2><div id="groups"></div></section>
+  <section class="panel"><h2>MARKET OVERVIEW<span class="cn">观察池</span></h2><div id="groups"></div></section>
   <section class="panel"><h2>ANOMALY SCAN<span class="cn">异动扫描</span></h2>
-    <div class="thr">阈值 <input id="thr" type="number" step="0.5" min="0.5" value="3"> %（绝对涨跌幅 ≥ 阈值）</div>
+    <div class="thr">阈值 <input id="thr" type="number" step="0.5" min="0.1" max="50" value="3"> %</div>
     <div id="anoms"></div>
   </section>
-  <section class="panel"><h2>CANDLE<span class="cn">K 线 · 点击任意 ticker 切换</span></h2>
+  <section class="panel"><h2>CANDLE<span class="cn">K 线 · 点击标的切换</span></h2>
     <div class="chead"><div class="t"><span id="csym">SPY</span><span class="c" id="cchg"></span></div>
       <div class="tfbar"><span id="tflabel" style="margin-right:4px">5m · 近2日 · 含盘前盘后</span>
         <button class="tfbtn on" data-tf="5m">5分</button><button class="tfbtn" data-tf="15m">15分</button><button class="tfbtn" data-tf="1d">日K</button>
+        <button class="tfbtn" id="refreshChart" type="button" title="重新读取 K 线">↻ 刷新</button>
       </div></div>
     <div class="subbar"><span><span class="ohlc" id="cohlc"></span><span class="cnote" id="cnote"></span></span>
       <label class="mato"><input type="checkbox" id="mato" checked> 均线(20/50)</label></div>
     <div id="chart"></div>
   </section>
 </main>
-<footer>数据：Yahoo Finance（非官方接口，延迟约1~3分钟）· 服务端每5分钟刷新 · 涨跌幅相对上个常规收盘价</footer>
+<footer id="footer">数据：Yahoo Finance（非官方接口，延迟约 1～3 分钟）· 抓取间隔按配置执行 · 交易日按 NYSE 常规假日规则估算</footer>
 <div class="modal-bg" id="cfgBg">
   <div class="modal">
     <h3>⚙️ 观察列表配置</h3>
-    <div class="hint">每行一个代码，格式：<b>代码 显示名</b>（显示名可省，默认用代码）。例如：<code>SIVE.ST Sivers</code>。指数用 <code>^NDX</code> <code>^IXIC</code> 这种写法。保存后服务端立刻重抓，约半分钟后刷新页面即可看到。</div>
-    <div id="cfgGroups"></div>
-    <div class="mrow">
-      <button class="btn" id="cfgAdd">＋ 添加分组</button>
+    <div class="hint">每行一个代码，格式：<b>代码 显示名</b>（显示名可省，默认用代码）。保存后观察池变更会立即触发抓取，刷新间隔最短 60 秒。</div>
+    <div class="cfg-settings">
+      <label>异动阈值 (%) <input id="cfgThreshold" type="number" min="0.1" max="50" step="0.1"></label>
+      <label>抓取间隔 (秒) <input id="cfgInterval" type="number" min="60" max="86400" step="60"></label>
     </div>
+    <div id="cfgGroups"></div>
+    <div class="mrow"><button class="btn" id="cfgAdd">＋ 添加分组</button></div>
     <div class="mrow">
       <button class="btn primary" id="cfgSave">保存</button>
       <button class="btn" id="cfgCancel">取消</button>
@@ -107,195 +126,262 @@
 </div>
 <script>
 const $ = id => document.getElementById(id);
-let quotes = [], chart = null, series = null, klCache = {};
+let quotes = [], chart = null, series = null, klCache = new Map(), chartRequestId = 0;
 let volSeries = null, ma20 = null, ma50 = null, prevLine = null, chartOk = false, curBars = [];
+let curSym = 'SPY', curTf = '5m', marketRequestId = 0;
 const TF_LABEL = {'5m':'5m · 近2日 · 含盘前盘后', '15m':'15m · 近1月 · 含盘前盘后', '1d':'日K · 近1年'};
+const BENCHMARKS = new Set(['SPY','QQQ','DIA','IWM','^NDX','^IXIC','^GSPC','^DJI','^VIX','^TNX','^RUT']);
 const fmtT = ts => new Date(ts*1000).toLocaleString('zh-CN',{hour12:false,month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
 
-// 美东交易时段状态
-function stage(){
-  const et = new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'}));
-  const mins = et.getHours()*60 + et.getMinutes();
-  const day = et.getDay();
-  const wknd = (day===0||day===6);
-  let name, cls, next;
-  if(!wknd && mins>=240 && mins<570){ name='Pre-Market 盘前'; cls=''; next=570; }
-  else if(!wknd && mins>=570 && mins<960){ name='Regular 盘中'; cls='open'; next=960; }
-  else if(!wknd && mins>=960 && mins<1200){ name='After-Hours 盘后'; cls=''; next=1200; }
-  else { name='Closed 休市'; cls='closed';
-    next = wknd ? null : 240;
-    if(day===5 && mins>=1200) next=null;
+async function updateMarketStage(){
+  const requestId = ++marketRequestId;
+  try{
+    const r = await fetch('/api/market-status?_='+Date.now(), {cache:'no-store'});
+    const status = await r.json();
+    if(!r.ok || requestId !== marketRequestId) return;
+    $('stage').textContent = status.label;
+    $('dot').className = 'dot '+status.class;
+    $('countdown').textContent = status.countdown || '';
+  }catch(e){
+    if(requestId === marketRequestId) $('stage').textContent = '市场状态暂不可用';
   }
-  let cd='';
-  if(next!==null){ const d=next-mins; cd=' · '+Math.floor(d/60)+'h '+String(d%60).padStart(2,'0')+'m后切换'; }
-  else if(wknd){ const d=(8-day)%7; cd=' · 周末休市'; }
-  $('stage').textContent=name; $('dot').className='dot '+cls; $('countdown').textContent=cd;
 }
 
-function rowHTML(q, active){
-  const c = q.chg_pct, up = c!==null && c>0, dn = c!==null && c<0;
-  const cls = up?'up':(dn?'down':'');
-  const st = q.stale ? '<span class="st">旧</span>' : '';
-  return `<div class="row${active?' active':''}${q.stale?' stale':''}" data-sym="${q.symbol}">
-    <div><span class="sym">${q.symbol}</span><span class="nm">${q.name}</span>${st}</div>
-    <div class="qt"><div class="p">${q.price===null?'<span class="err">—</span>':q.price}</div>
-    <div class="c ${cls}">${c===null?'<span class="err">—</span>':(c>0?'+':'')+c.toFixed(2)+'%'}</div></div></div>`;
+function rowElement(q){
+  const change = q.chg_pct, up = change != null && change > 0, down = change != null && change < 0;
+  const row = document.createElement('div');
+  row.className = 'row'+(q.symbol===curSym?' active':'')+(q.stale?' stale':'');
+  row.dataset.sym = q.symbol;
+  const identity = document.createElement('div');
+  const symbol = document.createElement('span'); symbol.className = 'sym'; symbol.textContent = q.symbol;
+  const name = document.createElement('span'); name.className = 'nm'; name.textContent = q.name || '';
+  identity.append(symbol, name);
+  if(q.stale){ const stale = document.createElement('span'); stale.className = 'st'; stale.textContent = '旧'; identity.appendChild(stale); }
+  const values = document.createElement('div'); values.className = 'qt';
+  const price = document.createElement('div'); price.className = 'p'; price.textContent = q.price == null ? '—' : String(q.price);
+  const percent = document.createElement('div'); percent.className = 'c'+(up?' up':(down?' down':''));
+  percent.textContent = change == null ? '—' : (change>0?'+':'')+Number(change).toFixed(2)+'%';
+  values.append(price, percent); row.append(identity, values);
+  return row;
 }
 
-async function loadKlines(sym, tf){
-  const key = sym+'_'+tf;
-  if(klCache[key]) return klCache[key];
-  const r = await fetch('/api/klines?symbol='+encodeURIComponent(sym)+'&tf='+tf);
-  const j = await r.json();
-  if(!r.ok || !j.ok) throw new Error(j.error||('HTTP '+r.status));
-  klCache[key]={candles:j.candles, stale:!!j.stale}; return klCache[key];
+function renderTape(benchmarks){
+  const tape = $('tape'); tape.replaceChildren();
+  benchmarks.forEach(q=>{
+    const item = document.createElement('span'); item.className = 'tape-item'; item.dataset.sym = q.symbol;
+    const symbol = document.createElement('b'); symbol.textContent = q.symbol;
+    const price = document.createElement('span'); price.className = 'pr'; price.textContent = q.price == null ? '—' : String(q.price);
+    const change = document.createElement('span');
+    change.className = q.chg_pct>0?'up':(q.chg_pct<0?'down':'');
+    change.textContent = q.chg_pct == null ? '—' : (q.chg_pct>0?'+':'')+Number(q.chg_pct).toFixed(2)+'%';
+    item.append(symbol, price, document.createTextNode(' '), change); tape.appendChild(item);
+  });
+  if(!benchmarks.length){ const empty = document.createElement('span'); empty.className='err'; empty.textContent='配置常用基准代码（如 SPY、^NDX）后会显示在这里'; tape.appendChild(empty); }
 }
+
+function renderDashboard(){
+  const threshold = Number.parseFloat($('thr').value);
+  const safeThreshold = Number.isFinite(threshold) ? threshold : 3;
+  const benchmarks = quotes.filter(q=>BENCHMARKS.has(q.symbol));
+  const excluded = new Set(benchmarks.map(q=>q.symbol));
+  const anomalies = quotes.filter(q=>!excluded.has(q.symbol) && q.chg_pct!=null && Math.abs(q.chg_pct)>=safeThreshold)
+                          .sort((a,b)=>Math.abs(b.chg_pct)-Math.abs(a.chg_pct));
+  anomalies.forEach(q=>excluded.add(q.symbol));
+  renderTape(benchmarks);
+
+  const groups = new Map();
+  quotes.forEach(q=>{
+    if(excluded.has(q.symbol)) return;
+    if(!groups.has(q.group)) groups.set(q.group, []);
+    groups.get(q.group).push(q);
+  });
+  const groupRoot = $('groups'); groupRoot.replaceChildren();
+  for(const [groupName, items] of groups){
+    const heading = document.createElement('div'); heading.className='grp'; heading.textContent=groupName;
+    groupRoot.appendChild(heading); items.forEach(q=>groupRoot.appendChild(rowElement(q)));
+  }
+  if(!groupRoot.childElementCount){ const empty=document.createElement('div'); empty.className='err'; empty.textContent='观察池当前标的均显示在行情带或异动区'; groupRoot.appendChild(empty); }
+
+  const anomalyRoot = $('anoms'); anomalyRoot.replaceChildren();
+  if(anomalies.length) anomalies.forEach(q=>anomalyRoot.appendChild(rowElement(q)));
+  else { const empty=document.createElement('div'); empty.className='err'; empty.textContent='本轮无超过阈值的非基准标的异动'; anomalyRoot.appendChild(empty); }
+  bindClicks();
+}
+
+async function loadKlines(symbol, timeframe, force=false){
+  const key = symbol+'_'+timeframe;
+  const existing = klCache.get(key);
+  if(!force && existing && existing.expiresAt>Date.now()){
+    return existing.data || existing.promise;
+  }
+  const entry = {data:null, promise:null, expiresAt:Date.now()+30000};
+  const query = '/api/klines?symbol='+encodeURIComponent(symbol)+'&tf='+encodeURIComponent(timeframe)+(force?'&refresh=1':'');
+  entry.promise = (async()=>{
+    const response = await fetch(query, {cache:'no-store'});
+    const result = await response.json();
+    if(!response.ok || !result.ok) throw new Error(result.error||('HTTP '+response.status));
+    entry.data = {candles:result.candles, stale:!!result.stale, updatedAt:result.updated_at, maxAge:result.max_age};
+    entry.expiresAt = Date.now()+Math.max(1,Number(result.max_age)||30)*1000;
+    entry.promise = null;
+    return entry.data;
+  })();
+  klCache.set(key, entry);
+  try { return await entry.promise; }
+  catch(error){ if(klCache.get(key)===entry) klCache.delete(key); throw error; }
+}
+
 function sma(bars, n){
-  const out = []; let s = 0;
-  for(let i=0;i<bars.length;i++){ s += bars[i].close; if(i>=n) s -= bars[i-n].close; if(i>=n-1) out.push({time:bars[i].time, value:+(s/n).toFixed(2)}); }
+  const out=[]; let sum=0;
+  for(let i=0;i<bars.length;i++){
+    sum+=bars[i].close; if(i>=n) sum-=bars[i-n].close;
+    if(i>=n-1) out.push({time:bars[i].time,value:+(sum/n).toFixed(2)});
+  }
   return out;
 }
-async function showChart(sym, tf){
-  sym = sym || curSym; tf = tf || curTf;
-  curSym = sym; curTf = tf;
-  document.querySelectorAll('.row').forEach(e=>e.classList.toggle('active', e.dataset.sym===sym));
-  document.querySelectorAll('.tfbtn').forEach(e=>e.classList.toggle('on', e.dataset.tf===tf));
-  $('tflabel').textContent = TF_LABEL[tf] || tf;
-  $('cnote').textContent = ''; $('cohlc').textContent = '';
-  const q = quotes.find(x=>x.symbol===sym);
-  $('csym').textContent = sym;
-  if(q && q.chg_pct!==null){ const c=q.chg_pct; $('cchg').textContent=(c>0?'+':'')+c.toFixed(2)+'% · '+q.price; $('cchg').className='c '+(c>0?'up':(c<0?'down':'')); }
+
+async function showChart(symbol, timeframe, force=false){
+  symbol = symbol || curSym; timeframe = timeframe || curTf;
+  curSym=symbol; curTf=timeframe;
+  const requestId=++chartRequestId;
+  document.querySelectorAll('[data-sym]').forEach(el=>el.classList.toggle('active',el.dataset.sym===symbol));
+  document.querySelectorAll('.tfbtn[data-tf]').forEach(el=>el.classList.toggle('on',el.dataset.tf===timeframe));
+  $('tflabel').textContent=TF_LABEL[timeframe]||timeframe;
+  $('cnote').textContent=''; $('cohlc').textContent=''; $('csym').textContent=symbol;
+  const quote=quotes.find(item=>item.symbol===symbol);
+  if(quote && quote.chg_pct!=null){
+    const change=quote.chg_pct;
+    $('cchg').textContent=(change>0?'+':'')+Number(change).toFixed(2)+'% · '+(quote.price==null?'—':quote.price);
+    $('cchg').className='c '+(change>0?'up':(change<0?'down':''));
+  }else{$('cchg').textContent='';}
   if(!chartOk) return;
   try{
-    const d = await loadKlines(sym, tf);
-    const bars = d.candles.map(c=>({time:c[0],open:c[1],high:c[2],low:c[3],close:c[4],volume:c[5]||0}));
+    const data=await loadKlines(symbol,timeframe,force);
+    if(requestId!==chartRequestId) return;
+    const bars=data.candles.map(c=>({time:c[0],open:c[1],high:c[2],low:c[3],close:c[4],volume:c[5]||0}));
     series.setData(bars);
-    volSeries.setData(bars.map(b=>({time:b.time, value:b.volume, color: b.close>=b.open ? 'rgba(34,163,85,.45)' : 'rgba(217,48,37,.45)'})));
-    const showMA = $('mato').checked;
+    volSeries.setData(bars.map(b=>({time:b.time,value:b.volume,color:b.close>=b.open?'rgba(34,163,85,.45)':'rgba(217,48,37,.45)'})));
+    const showMA=$('mato').checked;
     ma20.setData(sma(bars,20)); ma50.setData(sma(bars,50));
     ma20.applyOptions({visible:showMA}); ma50.applyOptions({visible:showMA});
-    if(prevLine){ series.removePriceLine(prevLine); prevLine = null; }
-    if(q && q.prev_close){ prevLine = series.createPriceLine({price:q.prev_close, color:'#c9ccd1', lineWidth:1, lineStyle:LightweightCharts.LineStyle.Dashed, title:'前收'}); }
-    chart.applyOptions({timeScale:{timeVisible: tf!=='1d'}});
-    chart.timeScale().fitContent();
-    if(d.stale) $('cnote').textContent = '显示缓存的旧数据（本轮抓取失败）';
-    curBars = bars;
-  }catch(e){ $('cnote').textContent = '该周期数据暂不可用，保留上一张图'; }
+    if(prevLine){series.removePriceLine(prevLine);prevLine=null;}
+    if(quote && quote.prev_close){prevLine=series.createPriceLine({price:quote.prev_close,color:'#c9ccd1',lineWidth:1,lineStyle:LightweightCharts.LineStyle.Dashed,title:'前收'});}
+    chart.applyOptions({timeScale:{timeVisible:timeframe!=='1d'}});
+    chart.timeScale().fitContent(); curBars=bars;
+    if(data.stale) $('cnote').textContent='显示缓存的旧数据（本轮抓取失败）';
+    else if(data.updatedAt && Date.now()/1000-data.updatedAt>3600) $('cnote').textContent='行情文件较旧，等待下一轮服务端抓取';
+  }catch(error){
+    if(requestId===chartRequestId) $('cnote').textContent='该周期数据暂不可用，保留上一张图';
+  }
+}
+
+function bindClicks(){
+  document.querySelectorAll('[data-sym]').forEach(element=>{element.onclick=()=>showChart(element.dataset.sym);});
 }
 
 async function refresh(){
   try{
-    const r = await fetch('data/quotes.json?_='+Date.now()); const j = await r.json();
-    quotes = j.quotes;
-    $('updated').textContent = '更新于 ' + fmtT(j.updated);
-    const ageMin = Math.max(0, Math.floor(Date.now()/1000 - j.updated)/60 | 0);
-    if(ageMin >= 10){ $('stalebar').style.display='block'; $('stalebar').textContent = '⚠️ 数据已 ' + ageMin + ' 分钟未更新（抓取服务可能异常，最后更新 ' + fmtT(j.updated) + '）'; }
+    const response=await fetch('data/quotes.json?_='+Date.now(),{cache:'no-store'});
+    if(!response.ok) throw new Error('HTTP '+response.status);
+    const data=await response.json();
+    quotes=Array.isArray(data.quotes)?data.quotes:[];
+    if(data.updated) $('updated').textContent='更新于 '+fmtT(data.updated);
+    const ageMin=data.updated?Math.max(0,Math.floor((Date.now()/1000-data.updated)/60)):0;
+    if(ageMin>=10){$('stalebar').style.display='block';$('stalebar').textContent='行情文件已 '+ageMin+' 分钟未更新（最后更新 '+fmtT(data.updated)+'）';}
     else $('stalebar').style.display='none';
-    if($('thr').dataset.init!=='1'){ $('thr').value = j.anomaly_threshold_pct || 3; $('thr').dataset.init='1'; }
-    // tape
-    $('tape').innerHTML = quotes.map(q=>{
-      const c=q.chg_pct, cls=c>0?'up':(c<0?'down':'');
-      return `<span class="tape-item" data-sym="${q.symbol}"><b>${q.symbol}</b><span class="pr">${q.price??'—'}</span> <span class="${cls}">${c===null?'—':(c>0?'+':'')+c.toFixed(2)+'%'}</span></span>`;
-    }).join('');
-    // groups
-    const gs={}; quotes.forEach(q=>{ (gs[q.group]=gs[q.group]||[]).push(q); });
-    $('groups').innerHTML = Object.entries(gs).map(([g,qs])=>
-      `<div class="grp">${g}</div>`+qs.map(q=>rowHTML(q)).join('')).join('');
-    // anomalies
-    const th = parseFloat($('thr').value)||3;
-    const an = quotes.filter(q=>q.chg_pct!==null && Math.abs(q.chg_pct)>=th)
-                     .sort((a,b)=>Math.abs(b.chg_pct)-Math.abs(a.chg_pct));
-    $('anoms').innerHTML = an.length ? an.map(q=>rowHTML(q)).join('') : '<div class="err">本轮无超过阈值的异动</div>';
-    bindClicks();
-  }catch(e){ $('updated').textContent='数据加载失败，稍后重试'; }
+    if($('thr').dataset.init!=='1'){$('thr').value=data.anomaly_threshold_pct||3;$('thr').dataset.init='1';}
+    renderDashboard();
+  }catch(error){$('updated').textContent='数据加载失败，稍后重试';}
 }
-function bindClicks(){
-  document.querySelectorAll('[data-sym]').forEach(e=>{
-    e.onclick = ()=>showChart(e.dataset.sym);
+
+if(typeof LightweightCharts!=='undefined'){
+  chartOk=true;
+  chart=LightweightCharts.createChart($('chart'),{layout:{background:{color:'#fff'},textColor:'#555'},grid:{vertLines:{color:'#f0f0f0'},horzLines:{color:'#f0f0f0'}},timeScale:{timeVisible:true}});
+  series=chart.addCandlestickSeries({upColor:'#22a355',downColor:'#d93025',wickUpColor:'#22a355',wickDownColor:'#d93025',borderVisible:false});
+  volSeries=chart.addHistogramSeries({priceFormat:{type:'volume'},priceScaleId:''});
+  chart.priceScale('').applyOptions({scaleMargins:{top:.84,bottom:0}});
+  chart.priceScale('right').applyOptions({scaleMargins:{top:.06,bottom:.18}});
+  ma20=chart.addLineSeries({color:'#f5a623',lineWidth:1,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
+  ma50=chart.addLineSeries({color:'#4a90d9',lineWidth:1,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
+  if(window.ResizeObserver) new ResizeObserver(entries=>{const rect=entries[0].contentRect;chart.applyOptions({width:rect.width,height:rect.height});}).observe($('chart'));
+  const fmtVol=n=>n>=1e8?(n/1e8).toFixed(2)+'亿':(n>=1e4?(n/1e4).toFixed(1)+'万':''+n);
+  chart.subscribeCrosshairMove(param=>{
+    if(!param||!param.time||!param.seriesData){$('cohlc').textContent='';return;}
+    const bar=param.seriesData.get(series); if(!bar){$('cohlc').textContent='';return;}
+    const volume=param.seriesData.get(volSeries);
+    $('cohlc').textContent='开 '+bar.open+' · 高 '+bar.high+' · 低 '+bar.low+' · 收 '+bar.close+(volume&&volume.value?' · 量 '+fmtVol(volume.value):'');
   });
+  $('mato').addEventListener('change',()=>{const visible=$('mato').checked;ma20.applyOptions({visible});ma50.applyOptions({visible});});
+}else{
+  const error=document.createElement('div'); error.className='err'; error.style.padding='24px'; error.textContent='图表库加载失败，请刷新页面重试'; $('chart').replaceChildren(error);
 }
 
-if(typeof LightweightCharts !== 'undefined'){
-  chartOk = true;
-  chart = LightweightCharts.createChart($('chart'),{layout:{background:{color:'#fff'},textColor:'#555'},grid:{vertLines:{color:'#f0f0f0'},horzLines:{color:'#f0f0f0'}},timeScale:{timeVisible:true}});
-  series = chart.addCandlestickSeries({upColor:'#22a355',downColor:'#d93025',wickUpColor:'#22a355',wickDownColor:'#d93025',borderVisible:false});
-  volSeries = chart.addHistogramSeries({priceFormat:{type:'volume'}, priceScaleId:''});
-  chart.priceScale('').applyOptions({scaleMargins:{top:0.84, bottom:0}});
-  chart.priceScale('right').applyOptions({scaleMargins:{top:0.06, bottom:0.18}});
-  ma20 = chart.addLineSeries({color:'#f5a623', lineWidth:1, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false});
-  ma50 = chart.addLineSeries({color:'#4a90d9', lineWidth:1, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false});
-  new ResizeObserver(es=>{ const r=es[0].contentRect; chart.applyOptions({width:r.width,height:r.height}); }).observe($('chart'));
-  const fmtVol = n => n>=1e8 ? (n/1e8).toFixed(2)+'亿' : (n>=1e4 ? (n/1e4).toFixed(1)+'万' : ''+n);
-  chart.subscribeCrosshairMove(p=>{
-    if(!p || !p.time || !p.seriesData){ $('cohlc').textContent=''; return; }
-    const b = p.seriesData.get(series); if(!b){ $('cohlc').textContent=''; return; }
-    const v = p.seriesData.get(volSeries);
-    $('cohlc').textContent = '开 '+b.open+' · 高 '+b.high+' · 低 '+b.low+' · 收 '+b.close + (v && v.value ? ' · 量 '+fmtVol(v.value) : '');
-  });
-  $('mato').addEventListener('change', ()=>{ const v=$('mato').checked; ma20.applyOptions({visible:v}); ma50.applyOptions({visible:v}); });
-} else {
-  $('chart').innerHTML = '<div class="err" style="padding:24px">图表库加载失败，请刷新页面重试</div>';
+$('thr').addEventListener('input',renderDashboard);
+document.querySelectorAll('.tfbtn[data-tf]').forEach(button=>{button.onclick=()=>showChart(curSym,button.dataset.tf);});
+$('refreshChart').onclick=()=>showChart(curSym,curTf,true);
+updateMarketStage(); setInterval(updateMarketStage,30000);
+refresh().then(()=>showChart(quotes.length?quotes[0].symbol:'SPY','5m'));
+setInterval(refresh,60000);
+setInterval(()=>showChart(curSym,curTf),60000);
+
+// Configuration editor uses DOM properties, never interpolates user text into HTML.
+function makeCfgGroup(group){
+  const box=document.createElement('div'); box.className='cfg-grp';
+  const row=document.createElement('div'); row.className='grow';
+  const name=document.createElement('input'); name.className='gname'; name.maxLength=24; name.placeholder='分组名'; name.value=group.name||'';
+  const remove=document.createElement('button'); remove.className='del'; remove.type='button'; remove.textContent='删除分组';
+  row.append(name,remove);
+  const textarea=document.createElement('textarea'); textarea.placeholder='MRVL Marvell\nSIVE.ST Sivers';
+  textarea.value=(group.tickers||[]).map(t=>t.symbol+(t.name&&t.name!==t.symbol?' '+t.name:'')).join('\n');
+  box.append(row,textarea); remove.onclick=()=>box.remove();
+  return box;
 }
 
-$('thr').addEventListener('change', refresh);
-document.querySelectorAll('.tfbtn').forEach(b=>{ b.onclick = ()=>showChart(curSym, b.dataset.tf); });
-stage(); setInterval(stage, 30000);
-refresh().then(()=>showChart('SPY','5m'));
-setInterval(refresh, 60000);
-
-// ---- ⚙️ 观察列表配置 ----
-function cfgGroupHTML(g, idx){
-  const lines = g.tickers.map(t=>t.symbol+(t.name&&t.name!==t.symbol?' '+t.name:'')).join('\n');
-  return `<div class="cfg-grp" data-idx="${idx}">
-    <div class="grow"><input class="gname" value="${g.name.replace(/"/g,'&quot;')}" placeholder="分组名"><button class="del">删除分组</button></div>
-    <textarea placeholder="MRVL Marvell&#10;SIVE.ST Sivers"></textarea>
-  </div>`;
-}
 async function openCfg(){
   $('cfgMsg').textContent=''; $('cfgMsg').className='cfg-msg';
   try{
-    const r = await fetch('/api/config'); const j = await r.json();
-    $('cfgGroups').innerHTML = j.groups.map(cfgGroupHTML).join('');
-    document.querySelectorAll('#cfgGroups .cfg-grp').forEach((el,i)=>{
-      el.querySelector('textarea').value = j.groups[i].tickers.map(t=>t.symbol+(t.name&&t.name!==t.symbol?' '+t.name:'')).join('\n');
-      el.querySelector('.del').onclick = ()=>el.remove();
-    });
-    $('cfgBg').classList.add('open');
-  }catch(e){ alert('读取配置失败：'+e); }
+    const response=await fetch('/api/config',{cache:'no-store'}); const config=await response.json();
+    if(!response.ok) throw new Error(config.error||('HTTP '+response.status));
+    $('cfgThreshold').value=config.anomaly_threshold_pct;
+    $('cfgInterval').value=config.fetch_interval_secs;
+    const fragment=document.createDocumentFragment();
+    config.groups.forEach(group=>fragment.appendChild(makeCfgGroup(group)));
+    $('cfgGroups').replaceChildren(fragment); $('cfgBg').classList.add('open');
+  }catch(error){alert('读取配置失败：'+error.message);}
 }
-function closeCfg(){ $('cfgBg').classList.remove('open'); }
-$('gear').onclick = openCfg;
-$('cfgCancel').onclick = closeCfg;
-$('cfgBg').addEventListener('click', e=>{ if(e.target===$('cfgBg')) closeCfg(); });
-$('cfgAdd').onclick = ()=>{
-  const d = document.createElement('div');
-  d.innerHTML = cfgGroupHTML({name:'新分组',tickers:[]}, document.querySelectorAll('#cfgGroups .cfg-grp').length);
-  const el = d.firstChild;
-  el.querySelector('.del').onclick = ()=>el.remove();
-  $('cfgGroups').appendChild(el);
-};
-$('cfgSave').onclick = async ()=>{
-  const msg = $('cfgMsg'); msg.textContent='保存中…'; msg.className='cfg-msg';
-  const groups = [];
-  for(const el of document.querySelectorAll('#cfgGroups .cfg-grp')){
-    const name = el.querySelector('.gname').value.trim() || '未命名';
-    const tickers = [];
-    for(const line of el.querySelector('textarea').value.split('\n')){
-      const s = line.trim(); if(!s) continue;
-      const sp = s.indexOf(' ');
-      if(sp<0) tickers.push({symbol:s.toUpperCase()});
-      else tickers.push({symbol:s.slice(0,sp).toUpperCase(), name:s.slice(sp+1).trim()});
+function closeCfg(){$('cfgBg').classList.remove('open');}
+$('gear').onclick=openCfg;
+$('cfgCancel').onclick=closeCfg;
+$('cfgBg').addEventListener('click',event=>{if(event.target===$('cfgBg'))closeCfg();});
+$('cfgAdd').onclick=()=>{$('cfgGroups').appendChild(makeCfgGroup({name:'新分组',tickers:[]}));};
+$('cfgSave').onclick=async()=>{
+  const message=$('cfgMsg'); message.textContent='保存中…'; message.className='cfg-msg'; $('cfgSave').disabled=true;
+  const groups=[];
+  for(const element of document.querySelectorAll('#cfgGroups .cfg-grp')){
+    const name=element.querySelector('.gname').value.trim()||'未命名';
+    const tickers=[];
+    for(const line of element.querySelector('textarea').value.split('\n')){
+      const value=line.trim(); if(!value)continue;
+      const split=value.indexOf(' ');
+      if(split<0)tickers.push({symbol:value.toUpperCase()});
+      else tickers.push({symbol:value.slice(0,split).toUpperCase(),name:value.slice(split+1).trim()});
     }
-    groups.push({name, tickers});
+    groups.push({name,tickers});
   }
   try{
-    const r = await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({groups})});
-    const j = await r.json();
-    if(!r.ok || !j.ok) throw new Error(j.error||('HTTP '+r.status));
-    msg.textContent = '已保存 '+j.tickers+' 个代码，服务端正在重抓，约半分钟后刷新页面查看。';
-    msg.className = 'cfg-msg ok';
-    setTimeout(()=>{ closeCfg(); klCache={}; refresh(); }, 1500);
-  }catch(e){ msg.textContent = '保存失败：'+e.message; msg.className='cfg-msg bad'; }
+    const response=await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({groups,anomaly_threshold_pct:Number($('cfgThreshold').value),fetch_interval_secs:Number($('cfgInterval').value)})});
+    const result=await response.json();
+    if(!response.ok||!result.ok)throw new Error(result.error||('HTTP '+response.status));
+    $('thr').value=$('cfgThreshold').value;
+    message.textContent='已保存 '+result.tickers+' 个代码；抓取间隔 '+result.fetch_interval_secs+' 秒，服务按此间隔执行。';
+    message.className='cfg-msg ok';
+    setTimeout(async()=>{
+      closeCfg(); klCache.clear(); await refresh();
+      const nextSymbol=quotes.some(q=>q.symbol===curSym)?curSym:(quotes[0]?quotes[0].symbol:'SPY');
+      showChart(nextSymbol,curTf,true);
+    },900);
+  }catch(error){message.textContent='保存失败：'+error.message;message.className='cfg-msg bad';}
+  finally{$('cfgSave').disabled=false;}
 };
 </script>
 </body>
