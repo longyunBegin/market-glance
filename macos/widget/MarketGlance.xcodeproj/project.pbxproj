@@ -9,6 +9,7 @@
 		A20000000000000000000001 /* MarketGlanceApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A30000000000000000000001 /* MarketGlanceApp.swift */; };
 		A20000000000000000000002 /* MarketGlanceWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = A30000000000000000000002 /* MarketGlanceWidget.swift */; };
 		A20000000000000000000003 /* MarketGlanceWidgetExtension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = A30000000000000000000007 /* MarketGlanceWidgetExtension.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		A20000000000000000000004 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A30000000000000000000009 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -42,6 +43,7 @@
 		A30000000000000000000006 /* Widget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Widget.entitlements; sourceTree = "<group>"; };
 		A30000000000000000000007 /* MarketGlanceWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = wrapper.app-extension; includeInIndex = 0; path = MarketGlanceWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		A30000000000000000000008 /* MarketGlance.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MarketGlance.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A30000000000000000000009 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -59,6 +61,7 @@
 				A30000000000000000000004 /* Widget-Info.plist */,
 				A30000000000000000000005 /* App.entitlements */,
 				A30000000000000000000006 /* Widget.entitlements */,
+				A30000000000000000000009 /* Assets.xcassets */,
 				A40000000000000000000002 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -136,7 +139,7 @@
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		A60000000000000000000003 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		A60000000000000000000003 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (A20000000000000000000004 /* Assets.xcassets in Resources */, ); runOnlyForDeploymentPostprocessing = 0; };
 		A60000000000000000000007 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXResourcesBuildPhase section */
 
@@ -166,6 +169,7 @@
 				CODE_SIGN_ENTITLEMENTS = App.entitlements;
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Manual;
+					ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -186,6 +190,7 @@
 				CODE_SIGN_ENTITLEMENTS = App.entitlements;
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Manual;
+					ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
