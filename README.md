@@ -24,7 +24,7 @@ macOS WidgetKit ── 只读 127.0.0.1:<配置端口>/data/quotes.json
 
 Twelve Data Basic 通过独立的 `twelvedata_internal.py` 手动采集，结果存入网页服务根目录之外的私有状态目录；它不会参与上述展示数据路径。
 
-- **K 线**：主图使用 TradingView 官方 Advanced Chart Widget 自带行情，不读取本机 `/api/klines`。支持 5 分钟与日线周期；切换代码、周期或主题时先卸载旧图，避免旧标的残留。北美市场 Widget 数据为 Cboe One Delayed Stocks，具体延迟与可用市场以 [TradingView 北美 Widget 市场列表](https://www.tradingview.com/widget-docs/markets/north-america/) 为准。Widget 需要联网加载。
+- **K 线**：主图使用 TradingView 官方 Advanced Chart Widget 自带行情，不读取本机 `/api/klines`。支持 5 分钟与日线周期；切换代码、周期或主题时先卸载旧图，避免旧标的残留。页面以图表 iframe 的加载事件判定组件就绪，不再把嵌入脚本下载成功误判为图表已显示；20 秒仍未就绪时会自动重试一次，失败后可用“刷新”重试。北美市场 Widget 数据为 Cboe One Delayed Stocks，具体延迟与可用市场以 [TradingView 北美 Widget 市场列表](https://www.tradingview.com/widget-docs/markets/north-america/) 为准。Widget 需要联网加载。
 - **市场状态**：按纽约当地时间识别周末、NYSE 常规假日、盘前/盘中/盘后和常见提前收市日，每 30 秒更新一次并显示纽约时间；倒计时指向下一个真实时段。市场状态与行情快照的最后更新时间分开展示。特殊临时休市不在年度规则表内。
 - **涨跌幅口径**：盘中按实时成交价相对最近常规收盘价计算；盘前、盘后及休市时按最近完整交易日收盘价对前一交易日收盘价计算。扩展时段价格及其相对常规收盘的变化会单独标注。
 - **主题与布局**：可在页面顶部选择浅色、深色或系统模式；主题和桌面面板显示偏好自动保存在当前浏览器。

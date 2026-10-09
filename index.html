@@ -150,11 +150,14 @@
   .signal.medium { background: #fff0e4; color: #9b5723; }
   .signal.strong { background: #fbecee; color: #aa444d; }
   .err { padding: 14px 9px; color: #8c97a6; font-size: 11px; line-height: 1.6; }
-  #chart { width: 100%; height: clamp(390px, 42vw, 610px); overflow: hidden; }
+  #chart { position: relative; width: 100%; height: clamp(390px, 42vw, 610px); overflow: hidden; }
   .tradingview-widget-container { width: 100%; height: 100%; }
   .tradingview-widget-container__widget { width: 100%; height: calc(100% - 22px); }
   .tradingview-widget-copyright { height: 22px; padding-top: 2px; color: #8792a0; font-size: 10px; text-align: right; }
   .tradingview-widget-copyright a { color: inherit; text-decoration: none; }
+  .tv-chart-loading { position: absolute; z-index: 1; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; background: var(--surface); color: #8792a0; font-size: 12px; pointer-events: none; }
+  .tv-chart-loading::before { width: 22px; height: 22px; border: 2px solid #dce4ef; border-top-color: #3569d4; border-radius: 50%; content: ""; animation: tv-chart-spin .8s linear infinite; }
+  @keyframes tv-chart-spin { to { transform: rotate(360deg); } }
   .tv-chart-error { padding: 24px; color: #8c97a6; font-size: 12px; line-height: 1.7; }
   .chead { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin: -1px 0 7px; }
   .chead .t { display: flex; align-items: baseline; flex-wrap: wrap; gap: 3px; color: #1c2c40; font-size: 20px; font-weight: 760; letter-spacing: -.04em; }
@@ -404,7 +407,9 @@
 </div>
 <script>
 const $ = id => document.getElementById(id);
-let quotes = [], chartRequestId = 0, chartMountedKey = '';
+let quotes = [], chartRequestId = 0, chartMountedKey = '', chartLoadTimer = null, chartRetryTimer = null, chartFrameObserver = null;
+const TV_WIDGET_LOAD_TIMEOUT_MS = 20000;
+const TV_WIDGET_MAX_AUTO_RETRIES = 1;
 let curSym = 'SPY', curTf = '5m', marketRequestId = 0, lastQuoteUpdated = 0, pendingConfig = null, originalConfig = null, anomalyFilter = 'all', configuredGroups = [];
 const TF_LABEL = {'5m':'5分钟走势', '1d':'日K'};
 const TV_INDEX_SYMBOLS = {'^NDX':'NASDAQ:NDX','^IXIC':'NASDAQ:IXIC','^GSPC':'SP:SPX','^DJI':'DJ:DJI','^VIX':'CBOE:VIX','^TNX':'TVC:US10Y','^RUT':'RUSSELL:RUT'};
@@ -629,7 +634,14 @@ function tradingViewSymbol(symbol){
   return symbol;
 }
 
-function mountTradingViewWidget(symbol,timeframe,requestId){
+function clearTradingViewLoadWatch(){
+  if(chartLoadTimer!==null){clearTimeout(chartLoadTimer); chartLoadTimer=null;}
+  if(chartRetryTimer!==null){clearTimeout(chartRetryTimer); chartRetryTimer=null;}
+  if(chartFrameObserver){chartFrameObserver.disconnect(); chartFrameObserver=null;}
+}
+
+function mountTradingViewWidget(symbol,timeframe,requestId,attempt=0){
+  clearTradingViewLoadWatch();
   const root=$('chart');
   const theme=effectiveTheme();
   const widgetContainer=document.createElement('div');
@@ -644,7 +656,11 @@ function mountTradingViewWidget(symbol,timeframe,requestId){
   link.rel='noopener noreferrer';
   link.textContent='由 TradingView 提供';
   attribution.appendChild(link);
-  root.replaceChildren(widgetContainer);
+  const loading=document.createElement('div');
+  loading.className='tv-chart-loading';
+  loading.setAttribute('role','status');
+  loading.textContent=attempt?'正在重新连接 TradingView 图表…':'正在连接 TradingView 图表…';
+  root.replaceChildren(widgetContainer,loading);
   widgetContainer.append(widgetHost,attribution);
   const options={
     autosize:true,
@@ -668,20 +684,46 @@ function mountTradingViewWidget(symbol,timeframe,requestId){
   script.src='https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
   script.async=true;
   script.textContent=JSON.stringify(options);
-  script.onload=()=>{
-    if(requestId!==chartRequestId)return;
+  let settled=false;
+  const isCurrent=()=>requestId===chartRequestId&&widgetContainer.isConnected;
+  const finish=()=>{
+    if(settled||!isCurrent())return;
+    settled=true;
+    clearTradingViewLoadWatch();
     root.setAttribute('aria-busy','false');
+    loading.remove();
     $('cnote').textContent='TradingView 官方 Widget 行情；北美市场为 Cboe One 延迟数据，与上方报价数据源独立。';
   };
-  script.onerror=()=>{
-    if(requestId!==chartRequestId)return;
+  const fail=()=>{
+    if(settled||!isCurrent())return;
+    settled=true;
+    clearTradingViewLoadWatch();
+    if(attempt<TV_WIDGET_MAX_AUTO_RETRIES){
+      loading.textContent='图表组件暂未就绪，正在自动重试…';
+      $('cnote').textContent='TradingView 图表未就绪，正在自动重试…';
+      chartRetryTimer=setTimeout(()=>{
+        if(requestId===chartRequestId)mountTradingViewWidget(symbol,timeframe,requestId,attempt+1);
+      },800);
+      return;
+    }
     root.setAttribute('aria-busy','false');
     const error=document.createElement('div');
     error.className='tv-chart-error';
-    error.textContent='TradingView Widget 未能加载。请检查网络或内容拦截设置，再点“刷新”重试。当前不会保留其他标的的图表。';
+    error.textContent='TradingView 图表组件未能完成加载（已自动重试 1 次）。请检查网络或内容拦截设置，再点右上角“刷新”重试。当前不会保留其他标的的图表。';
     root.replaceChildren(error);
     $('cnote').textContent='TradingView 图表加载失败。';
   };
+  const watchFrame=()=>{
+    const frame=widgetContainer.querySelector('iframe');
+    if(!frame||frame.dataset.tvLoadWatched==='true')return;
+    frame.dataset.tvLoadWatched='true';
+    frame.addEventListener('load',finish,{once:true});
+    frame.addEventListener('error',fail,{once:true});
+  };
+  chartFrameObserver=new MutationObserver(watchFrame);
+  chartFrameObserver.observe(widgetContainer,{childList:true,subtree:true});
+  chartLoadTimer=setTimeout(fail,TV_WIDGET_LOAD_TIMEOUT_MS);
+  script.onerror=fail;
   widgetContainer.appendChild(script);
 }
 
@@ -701,6 +743,7 @@ function showChart(symbol,timeframe,force=false){
   document.querySelectorAll('.tfbtn[data-tf]').forEach(el=>el.classList.toggle('on',el.dataset.tf===timeframe));
   $('tflabel').textContent=TF_LABEL[timeframe]||timeframe;
   if(shouldMount){
+    clearTradingViewLoadWatch();
     chartMountedKey=key;
     $('chart').setAttribute('aria-busy','true');
     $('cnote').textContent='正在加载 '+symbol+' · TradingView 官方图表…';

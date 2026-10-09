@@ -75,14 +75,19 @@ class FrontendGuardTests(unittest.TestCase):
 
     def test_widget_switch_clears_old_symbol_and_ignores_stale_load_events(self):
         self.assertIn("function ensureSelectedSymbol()", self.html)
-        self.assertIn("if(requestId!==chartRequestId)return", self.html)
+        self.assertIn("requestId===chartRequestId&&widgetContainer.isConnected", self.html)
         show_chart = self.html[self.html.index("function showChart"):self.html.index("function bindClicks")]
         self.assertIn("syncChartHeader(symbol)", show_chart)
         self.assertIn("if(selectionChanged)renderDashboard()", show_chart)
-        self.assertIn("root.replaceChildren(widgetContainer)", self.html)
+        self.assertIn("root.replaceChildren(widgetContainer,loading)", self.html)
         self.assertIn("root.replaceChildren(error)", self.html)
         self.assertIn("当前不会保留其他标的的图表", self.html)
         self.assertIn("chartMountedKey=key", show_chart)
+        self.assertIn("frame.addEventListener('load',finish,{once:true})", self.html)
+        self.assertIn("TV_WIDGET_LOAD_TIMEOUT_MS = 20000", self.html)
+        self.assertIn("TV_WIDGET_MAX_AUTO_RETRIES = 1", self.html)
+        self.assertIn("setTimeout(fail,TV_WIDGET_LOAD_TIMEOUT_MS)", self.html)
+        self.assertIn("已自动重试 1 次", self.html)
 
     def test_watchlist_search_sort_and_anomaly_direction_filters(self):
         self.assertIn('id="watchSearch" type="search"', self.html)
