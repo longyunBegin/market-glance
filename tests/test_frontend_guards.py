@@ -26,10 +26,28 @@ class FrontendGuardTests(unittest.TestCase):
     def test_layout_has_tablet_and_phone_breakpoints(self):
         self.assertIn("@media (max-width: 1120px)", self.html)
         self.assertIn("@media (max-width: 700px)", self.html)
+        self.assertIn("main > .panel.mobile-active", self.html)
 
     def test_quote_panels_partition_benchmarks_and_anomalies(self):
-        self.assertIn("const excluded = new Set(benchmarks.map(q=>q.symbol))", self.html)
+        self.assertIn("const excluded = new Set(tapeQuotes.map(q=>q.symbol))", self.html)
         self.assertIn("anomalies.forEach(q=>excluded.add(q.symbol))", self.html)
+
+    def test_selection_and_chart_title_follow_successful_data(self):
+        self.assertIn("if(!quotes.some(q=>q.symbol===curSym)) curSym=", self.html)
+        self.assertIn("if(requestId!==chartRequestId) return", self.html)
+        self.assertLess(self.html.index("series.setData(bars)"), self.html.index("$('csym').textContent=symbol"))
+        self.assertIn("$('chart').setAttribute('aria-busy','true')", self.html)
+        self.assertIn("K 线加载失败（", self.html)
+
+    def test_mobile_tabs_and_config_editor_validate_before_preview(self):
+        self.assertIn('data-panel-tab="overview"', self.html)
+        self.assertIn('data-panel-tab="anomalies"', self.html)
+        self.assertIn('data-panel-tab="chart"', self.html)
+        self.assertIn(r"const symbolPattern=/^[A-Z0-9^.=\-]{1,12}$/", self.html)
+        self.assertIn("代码重复：", self.html)
+        self.assertIn("变更预览", self.html)
+        self.assertIn("waitForUpdatedQuotes(pendingConfig", self.html)
+        self.assertNotIn("element.querySelector('textarea')", self.html)
 
 
 if __name__ == "__main__":

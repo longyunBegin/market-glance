@@ -89,7 +89,7 @@ def _next_trading_day(day):
 
 
 def market_status(now=None):
-    """Return session text and countdown for an aware or naive ET datetime."""
+    """Return session text and countdown to the next real session boundary."""
     now = now or datetime.now(ET)
     if now.tzinfo is None:
         now = now.replace(tzinfo=ET)
@@ -98,36 +98,46 @@ def market_status(now=None):
     day = now.date()
     minute = now.hour * 60 + now.minute
     is_holiday = day in holidays(day.year)
+    trading_day = is_trading_day(day)
     early_close = day in early_closes(day.year)
     regular_close = 13 * 60 if early_close else 16 * 60
 
-    if is_holiday:
-        name, cls, next_transition = "Closed 休市 · NYSE假日", "closed", None
-    elif day.weekday() >= 5:
-        name, cls, next_transition = "Closed 休市 · 周末", "closed", None
-    elif 4 * 60 <= minute < 9 * 60 + 30:
-        name, cls = "Pre-Market 盘前", ""
-        next_transition = now.replace(hour=9, minute=30, second=0, microsecond=0)
-    elif 9 * 60 + 30 <= minute < regular_close:
+    def at(hour, minute=0):
+        return now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+
+    if not trading_day:
+        if is_holiday:
+            name, cls = "Closed 休市 · NYSE假日", "closed"
+        else:
+            name, cls = "Closed 休市 · 周末", "closed"
+        next_transition = datetime.combine(_next_trading_day(day), time(4, 0), tzinfo=ET)
+        transition_label = "下次盘前"
+    elif minute < 4 * 60:
+        name, cls = "Closed 休市", "closed"
+        next_transition, transition_label = at(4), "盘前开始"
+    elif minute < 9 * 60 + 30:
+        name, cls = "Pre-Market 盘前", "pre"
+        next_transition, transition_label = at(9, 30), "常规开盘"
+    elif minute < regular_close:
         name = "Regular 盘中" + (" · 提前收市" if early_close else "")
         cls = "open"
-        next_transition = now.replace(hour=regular_close // 60, minute=regular_close % 60, second=0, microsecond=0)
-    elif regular_close <= minute < 20 * 60:
+        next_transition = at(regular_close // 60, regular_close % 60)
+        transition_label = "提前收市" if early_close else "收盘"
+    elif minute < 20 * 60:
         name = "After-Hours 盘后" + (" · 提前收市日" if early_close else "")
-        cls = ""
-        next_transition = now.replace(hour=20, minute=0, second=0, microsecond=0)
+        cls = "after"
+        next_transition, transition_label = at(20), "盘后结束"
     else:
-        name, cls, next_transition = "Closed 休市", "closed", None
+        name, cls = "Closed 休市", "closed"
+        next_day = _next_trading_day(day)
+        next_transition = datetime.combine(next_day, time(4, 0), tzinfo=ET)
+        transition_label = "下次盘前"
 
-    if next_transition is not None:
-        remaining = max(0, int((next_transition - now).total_seconds() // 60))
-        countdown = "· %dh %02dm后切换" % (remaining // 60, remaining % 60)
-    else:
-        if is_trading_day(day) and minute < 4 * 60:
-            next_open_day = day
-        else:
-            next_open_day = _next_trading_day(day)
-        countdown = "· 下次开市 %s 09:30 ET" % next_open_day.strftime("%m/%d")
+    # Round up to a whole minute and clamp defensively: stale clock ticks can
+    # never expose a negative countdown, even at a session boundary.
+    seconds_left = max(0, int((next_transition - now).total_seconds()))
+    remaining = (seconds_left + 59) // 60
+    countdown = "· %s %dh %02dm" % (transition_label, remaining // 60, remaining % 60)
     return {"label": name, "class": cls, "countdown": countdown,
             "holiday": is_holiday, "early_close": early_close,
-            "as_of": now.isoformat()}
+            "as_of": now.isoformat(), "next_transition": next_transition.isoformat()}

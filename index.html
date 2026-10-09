@@ -12,20 +12,42 @@
   header h1 { font-size: 17px; font-weight: 700; white-space: nowrap; }
   .stage { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #555; }
   .dot { width: 8px; height: 8px; flex: 0 0 8px; border-radius: 50%; background: #e0a800; }
-  .dot.open { background: #22a355; } .dot.closed { background: #999; }
+  .dot.open { background: #168447; } .dot.closed { background: #999; }
+  .dot.pre, .dot.after { background: #d99a16; }
+  .quote-update { margin-left: auto; font-size: 12px; color: #777; white-space: nowrap; }
   .tape { background: #fff; border-bottom: 1px solid #e2e4e8; overflow-x: auto; white-space: nowrap; padding: 8px 0; min-height: 37px; }
   .tape-item { display: inline-block; padding: 2px 14px; border-right: 1px solid #eee; font-size: 13px; cursor: pointer; }
+  .tape-item.active { background: #e8efff; border-radius: 4px; }
   .tape-item b { font-weight: 700; } .tape-item .pr { color: #333; margin-left: 6px; }
   .up { color: #168447; } .down { color: #c62828; }
   main { display: grid; grid-template-columns: minmax(230px, .9fr) minmax(230px, .9fr) minmax(0, 1.8fr); gap: 12px; padding: 12px 16px; max-width: 1500px; margin: 0 auto; }
   @media (max-width: 1120px) { main { grid-template-columns: minmax(220px, 1fr) minmax(220px, 1fr); } main > section:last-child { grid-column: 1 / -1; } }
+  .mobile-tabs { display: none; }
+  .signal { display: inline-block; margin-left: 8px; padding: 1px 5px; border-radius: 4px; font-size: 10px; font-weight: 600; background: #fff4d6; color: #946200; vertical-align: 1px; }
+  .signal.medium { background: #ffedd5; color: #a04b00; }
+  .signal.strong { background: #fde8e7; color: #b3261e; }
+  .cfg-tickers { display: grid; gap: 6px; }
+  .cfg-ticker-row { display: grid; grid-template-columns: minmax(80px, .9fr) minmax(100px, 1.2fr) auto; gap: 7px; }
+  .cfg-ticker-row input { min-width: 0; width: 100%; padding: 6px 7px; border: 1px solid #ddd; border-radius: 5px; font-size: 12px; }
+  .cfg-ticker-row .del { border: 1px solid #e2e4e8; background: #fff; color: #777; border-radius: 5px; padding: 4px 7px; cursor: pointer; }
+  .cfg-add-ticker { margin-top: 7px; border: 0; background: transparent; color: #1a73e8; font-size: 12px; cursor: pointer; }
+  .cfg-preview { margin-top: 12px; padding: 10px; border: 1px solid #d8e2f3; border-radius: 7px; background: #f8faff; font-size: 12px; color: #555; }
+  .cfg-preview h4 { margin-bottom: 5px; font-size: 13px; color: #333; }
+  .cfg-preview-line { margin-top: 4px; overflow-wrap: anywhere; }
+  .cfg-preview-actions { display: flex; gap: 8px; margin-top: 10px; }
+  .cfg-notice { padding: 7px 16px; border-bottom: 1px solid #d8e2f3; background: #f8faff; color: #315a91; font-size: 12px; }
+  .cfg-notice[hidden] { display: none; }
   @media (max-width: 700px) {
     header { flex-wrap: wrap; gap: 7px 10px; padding: 9px 12px; }
     header h1 { font-size: 16px; }
     .stage { font-size: 12px; }
     #updated { margin-left: auto !important; }
     main { grid-template-columns: minmax(0, 1fr); gap: 9px; padding: 9px; }
-    main > section:last-child { grid-column: auto; }
+    .mobile-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 3px; background: #e9ebef; border-radius: 7px; }
+    .mobile-tabs button { border: 0; border-radius: 5px; background: transparent; color: #555; padding: 8px 4px; font-size: 13px; cursor: pointer; }
+    .mobile-tabs button.on { background: #fff; color: #1a1a1a; font-weight: 600; }
+    main > .panel { display: none; }
+    main > .panel.mobile-active { display: block; }
     .panel { padding: 10px; }
     .chead { align-items: flex-start; gap: 8px; flex-wrap: wrap; }
     .tfbar { flex-wrap: wrap; }
@@ -65,7 +87,7 @@
   .cfg-grp { border: 1px solid #e6e8ec; border-radius: 8px; padding: 10px; margin-bottom: 10px; }
   .cfg-grp .grow { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
   .cfg-grp input.gname { flex: 1; min-width: 0; padding: 5px 8px; border: 1px solid #ddd; border-radius: 5px; font-size: 13px; }
-  .cfg-grp textarea { width: 100%; height: 110px; padding: 6px 8px; border: 1px solid #ddd; border-radius: 5px; font-family: ui-monospace, monospace; font-size: 12.5px; resize: vertical; }
+  .cfg-tickers { margin-top: 2px; }
   .cfg-grp .del { border: 1px solid #f0c0c0; background: #fff; color: #d93025; border-radius: 5px; font-size: 12px; padding: 5px 8px; cursor: pointer; }
   .mrow { display: flex; gap: 8px; margin-top: 10px; }
   .btn { border: 1px solid #ddd; background: #fff; border-radius: 6px; font-size: 13px; padding: 7px 14px; cursor: pointer; }
@@ -83,34 +105,40 @@
 <body>
 <header>
   <h1>Market Glance <span style="font-weight:400;color:#888;font-size:13px">盘前哨</span></h1>
-  <div class="stage"><span class="dot" id="dot"></span><span id="stage">—</span><span id="countdown" style="color:#999"></span></div>
-  <div style="margin-left:auto;font-size:12px;color:#999" id="updated"></div>
+  <div class="stage"><span style="color:#999">市场状态</span><span class="dot" id="dot"></span><span id="stage">—</span><span id="countdown" style="color:#999"></span></div>
+  <div class="quote-update" id="updated">行情最后更新：—</div>
   <button class="gear" id="gear" title="配置观察列表">⚙️</button>
 </header>
 <div class="stalebar" id="stalebar"></div>
 <div class="tape" id="tape" aria-label="市场基准行情"></div>
+<div class="cfg-notice" id="cfgNotice" aria-live="polite" hidden></div>
 <main>
-  <section class="panel"><h2>MARKET OVERVIEW<span class="cn">观察池</span></h2><div id="groups"></div></section>
-  <section class="panel"><h2>ANOMALY SCAN<span class="cn">异动扫描</span></h2>
+  <nav class="mobile-tabs" aria-label="看板视图">
+    <button type="button" data-panel-tab="overview" class="on" aria-pressed="true">行情</button>
+    <button type="button" data-panel-tab="anomalies" aria-pressed="false">异动</button>
+    <button type="button" data-panel-tab="chart" aria-pressed="false">K 线</button>
+  </nav>
+  <section class="panel mobile-active" data-panel="overview"><h2>MARKET OVERVIEW<span class="cn">观察池</span></h2><div id="groups"></div></section>
+  <section class="panel" data-panel="anomalies"><h2>ANOMALY SCAN<span class="cn">异动扫描</span></h2>
     <div class="thr">阈值 <input id="thr" type="number" step="0.5" min="0.1" max="50" value="3"> %</div>
     <div id="anoms"></div>
   </section>
-  <section class="panel"><h2>CANDLE<span class="cn">K 线 · 点击标的切换</span></h2>
-    <div class="chead"><div class="t"><span id="csym">SPY</span><span class="c" id="cchg"></span></div>
+  <section class="panel" data-panel="chart"><h2>CANDLE<span class="cn">K 线 · 点击标的切换</span></h2>
+    <div class="chead"><div class="t"><span id="csym">—</span><span class="c" id="cchg"></span></div>
       <div class="tfbar"><span id="tflabel" style="margin-right:4px">5m · 近2日 · 含盘前盘后</span>
         <button class="tfbtn on" data-tf="5m">5分</button><button class="tfbtn" data-tf="15m">15分</button><button class="tfbtn" data-tf="1d">日K</button>
         <button class="tfbtn" id="refreshChart" type="button" title="重新读取 K 线">↻ 刷新</button>
       </div></div>
     <div class="subbar"><span><span class="ohlc" id="cohlc"></span><span class="cnote" id="cnote"></span></span>
       <label class="mato"><input type="checkbox" id="mato" checked> 均线(20/50)</label></div>
-    <div id="chart"></div>
+    <div id="chart" aria-live="polite" aria-busy="false"></div>
   </section>
 </main>
 <footer id="footer">数据：Yahoo Finance（非官方接口，延迟约 1～3 分钟）· 抓取间隔按配置执行 · 交易日按 NYSE 常规假日规则估算</footer>
 <div class="modal-bg" id="cfgBg">
   <div class="modal">
     <h3>⚙️ 观察列表配置</h3>
-    <div class="hint">每行一个代码，格式：<b>代码 显示名</b>（显示名可省，默认用代码）。保存后观察池变更会立即触发抓取，刷新间隔最短 60 秒。</div>
+    <div class="hint">逐项填写代码和显示名（显示名可省，默认用代码）。预览会检查重复代码和格式；观察池变更保存后会立即触发行情抓取。</div>
     <div class="cfg-settings">
       <label>异动阈值 (%) <input id="cfgThreshold" type="number" min="0.1" max="50" step="0.1"></label>
       <label>抓取间隔 (秒) <input id="cfgInterval" type="number" min="60" max="86400" step="60"></label>
@@ -118,8 +146,12 @@
     <div id="cfgGroups"></div>
     <div class="mrow"><button class="btn" id="cfgAdd">＋ 添加分组</button></div>
     <div class="mrow">
-      <button class="btn primary" id="cfgSave">保存</button>
+      <button class="btn primary" id="cfgSave">预览变更</button>
       <button class="btn" id="cfgCancel">取消</button>
+    </div>
+    <div class="cfg-preview" id="cfgPreview" hidden>
+      <h4>变更预览</h4><div id="cfgPreviewDetails"></div>
+      <div class="cfg-preview-actions"><button class="btn primary" id="cfgCommit">确认保存</button><button class="btn" id="cfgEdit">返回修改</button></div>
     </div>
     <div class="cfg-msg" id="cfgMsg"></div>
   </div>
@@ -128,9 +160,10 @@
 const $ = id => document.getElementById(id);
 let quotes = [], chart = null, series = null, klCache = new Map(), chartRequestId = 0;
 let volSeries = null, ma20 = null, ma50 = null, prevLine = null, chartOk = false, curBars = [];
-let curSym = 'SPY', curTf = '5m', marketRequestId = 0;
+let curSym = 'SPY', curTf = '5m', marketRequestId = 0, lastQuoteUpdated = 0, pendingConfig = null, originalConfig = null;
 const TF_LABEL = {'5m':'5m · 近2日 · 含盘前盘后', '15m':'15m · 近1月 · 含盘前盘后', '1d':'日K · 近1年'};
 const BENCHMARKS = new Set(['SPY','QQQ','DIA','IWM','^NDX','^IXIC','^GSPC','^DJI','^VIX','^TNX','^RUT']);
+const TAPE_BASES = ['SPY','QQQ','DIA'];
 const fmtT = ts => new Date(ts*1000).toLocaleString('zh-CN',{hour12:false,month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
 
 async function updateMarketStage(){
@@ -143,11 +176,11 @@ async function updateMarketStage(){
     $('dot').className = 'dot '+status.class;
     $('countdown').textContent = status.countdown || '';
   }catch(e){
-    if(requestId === marketRequestId) $('stage').textContent = '市场状态暂不可用';
+    if(requestId === marketRequestId){$('stage').textContent = '市场状态暂不可用';$('countdown').textContent='';$('dot').className='dot';}
   }
 }
 
-function rowElement(q){
+function rowElement(q, anomaly=false, threshold=3){
   const change = q.chg_pct, up = change != null && change > 0, down = change != null && change < 0;
   const row = document.createElement('div');
   row.className = 'row'+(q.symbol===curSym?' active':'')+(q.stale?' stale':'');
@@ -156,6 +189,12 @@ function rowElement(q){
   const symbol = document.createElement('span'); symbol.className = 'sym'; symbol.textContent = q.symbol;
   const name = document.createElement('span'); name.className = 'nm'; name.textContent = q.name || '';
   identity.append(symbol, name);
+  if(anomaly){
+    const ratio=Math.abs(Number(change)||0)/Math.max(.1,threshold);
+    const level=ratio>=3?'strong':(ratio>=2?'medium':'');
+    const signal=document.createElement('span'); signal.className='signal'+(level?' '+level:'');
+    signal.textContent=ratio>=3?'强':(ratio>=2?'中':'轻'); identity.appendChild(signal);
+  }
   if(q.stale){ const stale = document.createElement('span'); stale.className = 'st'; stale.textContent = '旧'; identity.appendChild(stale); }
   const values = document.createElement('div'); values.className = 'qt';
   const price = document.createElement('div'); price.className = 'p'; price.textContent = q.price == null ? '—' : String(q.price);
@@ -165,10 +204,10 @@ function rowElement(q){
   return row;
 }
 
-function renderTape(benchmarks){
+function renderTape(tapeQuotes){
   const tape = $('tape'); tape.replaceChildren();
-  benchmarks.forEach(q=>{
-    const item = document.createElement('span'); item.className = 'tape-item'; item.dataset.sym = q.symbol;
+  tapeQuotes.forEach(q=>{
+    const item = document.createElement('span'); item.className = 'tape-item'+(q.symbol===curSym?' active':''); item.dataset.sym = q.symbol;
     const symbol = document.createElement('b'); symbol.textContent = q.symbol;
     const price = document.createElement('span'); price.className = 'pr'; price.textContent = q.price == null ? '—' : String(q.price);
     const change = document.createElement('span');
@@ -176,18 +215,20 @@ function renderTape(benchmarks){
     change.textContent = q.chg_pct == null ? '—' : (q.chg_pct>0?'+':'')+Number(q.chg_pct).toFixed(2)+'%';
     item.append(symbol, price, document.createTextNode(' '), change); tape.appendChild(item);
   });
-  if(!benchmarks.length){ const empty = document.createElement('span'); empty.className='err'; empty.textContent='配置常用基准代码（如 SPY、^NDX）后会显示在这里'; tape.appendChild(empty); }
+  if(!tapeQuotes.length){ const empty = document.createElement('span'); empty.className='err'; empty.textContent='配置常用基准代码（如 SPY、QQQ）后会显示在这里'; tape.appendChild(empty); }
 }
 
 function renderDashboard(){
   const threshold = Number.parseFloat($('thr').value);
   const safeThreshold = Number.isFinite(threshold) ? threshold : 3;
-  const benchmarks = quotes.filter(q=>BENCHMARKS.has(q.symbol));
-  const excluded = new Set(benchmarks.map(q=>q.symbol));
-  const anomalies = quotes.filter(q=>!excluded.has(q.symbol) && q.chg_pct!=null && Math.abs(q.chg_pct)>=safeThreshold)
+  const tapeQuotes = TAPE_BASES.map(symbol=>quotes.find(q=>q.symbol===symbol)).filter(Boolean);
+  const selectedQuote=quotes.find(q=>q.symbol===curSym);
+  if(selectedQuote && !tapeQuotes.some(q=>q.symbol===selectedQuote.symbol)) tapeQuotes.push(selectedQuote);
+  const excluded = new Set(tapeQuotes.map(q=>q.symbol));
+  const anomalies = quotes.filter(q=>!excluded.has(q.symbol) && !BENCHMARKS.has(q.symbol) && q.chg_pct!=null && Math.abs(q.chg_pct)>=safeThreshold)
                           .sort((a,b)=>Math.abs(b.chg_pct)-Math.abs(a.chg_pct));
   anomalies.forEach(q=>excluded.add(q.symbol));
-  renderTape(benchmarks);
+  renderTape(tapeQuotes);
 
   const groups = new Map();
   quotes.forEach(q=>{
@@ -203,9 +244,17 @@ function renderDashboard(){
   if(!groupRoot.childElementCount){ const empty=document.createElement('div'); empty.className='err'; empty.textContent='观察池当前标的均显示在行情带或异动区'; groupRoot.appendChild(empty); }
 
   const anomalyRoot = $('anoms'); anomalyRoot.replaceChildren();
-  if(anomalies.length) anomalies.forEach(q=>anomalyRoot.appendChild(rowElement(q)));
+  if(anomalies.length) anomalies.forEach(q=>anomalyRoot.appendChild(rowElement(q,true,safeThreshold)));
   else { const empty=document.createElement('div'); empty.className='err'; empty.textContent='本轮无超过阈值的非基准标的异动'; anomalyRoot.appendChild(empty); }
   bindClicks();
+}
+
+function activateMobilePanel(panel){
+  document.querySelectorAll('[data-panel]').forEach(section=>section.classList.toggle('mobile-active',section.dataset.panel===panel));
+  document.querySelectorAll('[data-panel-tab]').forEach(button=>{
+    const active=button.dataset.panelTab===panel;
+    button.classList.toggle('on',active); button.setAttribute('aria-pressed',String(active));
+  });
 }
 
 async function loadKlines(symbol, timeframe, force=false){
@@ -241,36 +290,47 @@ function sma(bars, n){
 
 async function showChart(symbol, timeframe, force=false){
   symbol = symbol || curSym; timeframe = timeframe || curTf;
+  const selectionChanged=symbol!==curSym;
   curSym=symbol; curTf=timeframe;
   const requestId=++chartRequestId;
+  if(selectionChanged) renderDashboard();
+  activateMobilePanel('chart');
   document.querySelectorAll('[data-sym]').forEach(el=>el.classList.toggle('active',el.dataset.sym===symbol));
   document.querySelectorAll('.tfbtn[data-tf]').forEach(el=>el.classList.toggle('on',el.dataset.tf===timeframe));
-  $('tflabel').textContent=TF_LABEL[timeframe]||timeframe;
-  $('cnote').textContent=''; $('cohlc').textContent=''; $('csym').textContent=symbol;
-  const quote=quotes.find(item=>item.symbol===symbol);
-  if(quote && quote.chg_pct!=null){
-    const change=quote.chg_pct;
-    $('cchg').textContent=(change>0?'+':'')+Number(change).toFixed(2)+'% · '+(quote.price==null?'—':quote.price);
-    $('cchg').className='c '+(change>0?'up':(change<0?'down':''));
-  }else{$('cchg').textContent='';}
-  if(!chartOk) return;
+  $('cnote').textContent='正在加载 '+symbol+' · '+(TF_LABEL[timeframe]||timeframe)+'；保留上次成功的图表标题与数据';
+  $('cohlc').textContent=''; $('chart').setAttribute('aria-busy','true');
+  if(!chartOk){$('chart').setAttribute('aria-busy','false');return;}
   try{
     const data=await loadKlines(symbol,timeframe,force);
     if(requestId!==chartRequestId) return;
     const bars=data.candles.map(c=>({time:c[0],open:c[1],high:c[2],low:c[3],close:c[4],volume:c[5]||0}));
+    if(!bars.length) throw new Error('当前周期没有可用 K 线');
     series.setData(bars);
     volSeries.setData(bars.map(b=>({time:b.time,value:b.volume,color:b.close>=b.open?'rgba(34,163,85,.45)':'rgba(217,48,37,.45)'})));
     const showMA=$('mato').checked;
     ma20.setData(sma(bars,20)); ma50.setData(sma(bars,50));
     ma20.applyOptions({visible:showMA}); ma50.applyOptions({visible:showMA});
     if(prevLine){series.removePriceLine(prevLine);prevLine=null;}
+    const quote=quotes.find(item=>item.symbol===symbol);
     if(quote && quote.prev_close){prevLine=series.createPriceLine({price:quote.prev_close,color:'#c9ccd1',lineWidth:1,lineStyle:LightweightCharts.LineStyle.Dashed,title:'前收'});}
     chart.applyOptions({timeScale:{timeVisible:timeframe!=='1d'}});
     chart.timeScale().fitContent(); curBars=bars;
-    if(data.stale) $('cnote').textContent='显示缓存的旧数据（本轮抓取失败）';
-    else if(data.updatedAt && Date.now()/1000-data.updatedAt>3600) $('cnote').textContent='行情文件较旧，等待下一轮服务端抓取';
+    $('csym').textContent=symbol; $('tflabel').textContent=TF_LABEL[timeframe]||timeframe;
+    if(quote && quote.chg_pct!=null){
+      const change=quote.chg_pct;
+      $('cchg').textContent=(change>0?'+':'')+Number(change).toFixed(2)+'% · '+(quote.price==null?'—':quote.price);
+      $('cchg').className='c '+(change>0?'up':(change<0?'down':''));
+    }else{$('cchg').textContent='';}
+    $('chart').setAttribute('aria-busy','false');
+    if(data.stale) $('cnote').textContent='K 线已加载，但为缓存旧数据（本轮抓取失败）';
+    else if(data.updatedAt && Date.now()/1000-data.updatedAt>3600) $('cnote').textContent='K 线已加载；行情文件较旧，等待下一轮服务端抓取';
+    else $('cnote').textContent='';
   }catch(error){
-    if(requestId===chartRequestId) $('cnote').textContent='该周期数据暂不可用，保留上一张图';
+    if(requestId===chartRequestId){
+      $('chart').setAttribute('aria-busy','false');
+      const previous=$('csym').textContent;
+      $('cnote').textContent='K 线加载失败（'+symbol+'）：'+error.message+'。'+(previous&&previous!==symbol?'仍显示 '+previous+' 的上次成功图表。':'');
+    }
   }
 }
 
@@ -283,14 +343,18 @@ async function refresh(){
     const response=await fetch('data/quotes.json?_='+Date.now(),{cache:'no-store'});
     if(!response.ok) throw new Error('HTTP '+response.status);
     const data=await response.json();
+    const previousSelection=curSym, hadQuotes=quotes.length>0;
     quotes=Array.isArray(data.quotes)?data.quotes:[];
-    if(data.updated) $('updated').textContent='更新于 '+fmtT(data.updated);
+    lastQuoteUpdated=Number(data.updated)||0;
+    if(data.updated) $('updated').textContent='行情最后更新于 '+fmtT(data.updated);
     const ageMin=data.updated?Math.max(0,Math.floor((Date.now()/1000-data.updated)/60)):0;
     if(ageMin>=10){$('stalebar').style.display='block';$('stalebar').textContent='行情文件已 '+ageMin+' 分钟未更新（最后更新 '+fmtT(data.updated)+'）';}
     else $('stalebar').style.display='none';
+    if(!quotes.some(q=>q.symbol===curSym)) curSym=quotes.some(q=>q.symbol==='SPY')?'SPY':(quotes[0]?quotes[0].symbol:'SPY');
     if($('thr').dataset.init!=='1'){$('thr').value=data.anomaly_threshold_pct||3;$('thr').dataset.init='1';}
     renderDashboard();
-  }catch(error){$('updated').textContent='数据加载失败，稍后重试';}
+    if(hadQuotes && previousSelection!==curSym && chartOk) showChart(curSym,curTf);
+  }catch(error){$('updated').textContent='行情最后更新：读取失败，稍后重试';}
 }
 
 if(typeof LightweightCharts!=='undefined'){
@@ -318,71 +382,171 @@ if(typeof LightweightCharts!=='undefined'){
 $('thr').addEventListener('input',renderDashboard);
 document.querySelectorAll('.tfbtn[data-tf]').forEach(button=>{button.onclick=()=>showChart(curSym,button.dataset.tf);});
 $('refreshChart').onclick=()=>showChart(curSym,curTf,true);
+document.querySelectorAll('[data-panel-tab]').forEach(button=>{button.onclick=()=>activateMobilePanel(button.dataset.panelTab);});
 updateMarketStage(); setInterval(updateMarketStage,30000);
 refresh().then(()=>showChart(quotes.length?quotes[0].symbol:'SPY','5m'));
 setInterval(refresh,60000);
 setInterval(()=>showChart(curSym,curTf),60000);
 
 // Configuration editor uses DOM properties, never interpolates user text into HTML.
+function makeCfgTicker(ticker={}){
+  const row=document.createElement('div'); row.className='cfg-ticker-row';
+  const symbol=document.createElement('input'); symbol.className='ticker-symbol'; symbol.placeholder='代码，如 MRVL'; symbol.setAttribute('aria-label','行情代码'); symbol.maxLength=12; symbol.value=ticker.symbol||'';
+  const name=document.createElement('input'); name.className='ticker-name'; name.placeholder='显示名（可省）'; name.setAttribute('aria-label','显示名'); name.maxLength=24; name.value=ticker.name&&ticker.name!==ticker.symbol?ticker.name:'';
+  const remove=document.createElement('button'); remove.className='del'; remove.type='button'; remove.title='删除此代码'; remove.setAttribute('aria-label','删除此代码'); remove.textContent='×';
+  row.append(symbol,name,remove); remove.onclick=()=>row.remove();
+  return row;
+}
 function makeCfgGroup(group){
   const box=document.createElement('div'); box.className='cfg-grp';
   const row=document.createElement('div'); row.className='grow';
   const name=document.createElement('input'); name.className='gname'; name.maxLength=24; name.placeholder='分组名'; name.value=group.name||'';
   const remove=document.createElement('button'); remove.className='del'; remove.type='button'; remove.textContent='删除分组';
   row.append(name,remove);
-  const textarea=document.createElement('textarea'); textarea.placeholder='MRVL Marvell\nSIVE.ST Sivers';
-  textarea.value=(group.tickers||[]).map(t=>t.symbol+(t.name&&t.name!==t.symbol?' '+t.name:'')).join('\n');
-  box.append(row,textarea); remove.onclick=()=>box.remove();
+  const tickers=document.createElement('div'); tickers.className='cfg-tickers';
+  (group.tickers||[]).forEach(ticker=>tickers.appendChild(makeCfgTicker(ticker)));
+  const add=document.createElement('button'); add.className='cfg-add-ticker'; add.type='button'; add.textContent='＋ 添加代码';
+  add.onclick=()=>tickers.appendChild(makeCfgTicker());
+  box.append(row,tickers,add); remove.onclick=()=>box.remove();
   return box;
 }
 
 async function openCfg(){
-  $('cfgMsg').textContent=''; $('cfgMsg').className='cfg-msg';
+  $('cfgMsg').textContent=''; $('cfgMsg').className='cfg-msg'; $('cfgPreview').hidden=true; pendingConfig=null;
   try{
     const response=await fetch('/api/config',{cache:'no-store'}); const config=await response.json();
     if(!response.ok) throw new Error(config.error||('HTTP '+response.status));
+    originalConfig=config;
     $('cfgThreshold').value=config.anomaly_threshold_pct;
     $('cfgInterval').value=config.fetch_interval_secs;
     const fragment=document.createDocumentFragment();
     config.groups.forEach(group=>fragment.appendChild(makeCfgGroup(group)));
-    $('cfgGroups').replaceChildren(fragment); $('cfgBg').classList.add('open');
+    $('cfgGroups').replaceChildren(fragment); setConfigEditing(true); $('cfgBg').classList.add('open');
   }catch(error){alert('读取配置失败：'+error.message);}
 }
 function closeCfg(){$('cfgBg').classList.remove('open');}
+function collectCfgDraft(){
+  const symbolPattern=/^[A-Z0-9^.=\-]{1,12}$/;
+  const threshold=Number($('cfgThreshold').value), interval=Number($('cfgInterval').value);
+  if(!Number.isFinite(threshold)||threshold<.1||threshold>50)throw new Error('异动阈值必须在 0.1 到 50 之间');
+  if(!Number.isInteger(interval)||interval<60||interval>86400)throw new Error('抓取间隔必须是 60 到 86400 秒之间的整数');
+  const groups=[], seen=new Set(); let total=0;
+  for(const element of document.querySelectorAll('#cfgGroups .cfg-grp')){
+    const name=element.querySelector('.gname').value.trim()||'未命名', tickers=[];
+    for(const row of element.querySelectorAll('.cfg-ticker-row')){
+      const rawSymbol=row.querySelector('.ticker-symbol').value.trim();
+      const rawName=row.querySelector('.ticker-name').value.trim();
+      if(!rawSymbol&&!rawName)continue;
+      const symbol=rawSymbol.toUpperCase();
+      if(!symbolPattern.test(symbol))throw new Error('代码格式无效：'+(rawSymbol||'（空白）')+'；请使用最多 12 位字母、数字、^ . - =');
+      if(seen.has(symbol))throw new Error('代码重复：'+symbol);
+      seen.add(symbol); tickers.push({symbol,name:rawName||symbol});
+    }
+    if(!tickers.length)throw new Error('分组「'+name+'」至少需要一个有效代码');
+    if(tickers.length>30)throw new Error('分组「'+name+'」最多 30 个代码');
+    total+=tickers.length; groups.push({name,tickers});
+  }
+  if(!groups.length)throw new Error('至少需要一个分组');
+  if(groups.length>10)throw new Error('最多设置 10 个分组');
+  if(total>60)throw new Error('代码总数最多 60 个');
+  return {groups,anomaly_threshold_pct:threshold,fetch_interval_secs:interval};
+}
+function flattenTickers(groups){
+  const map=new Map();
+  groups.forEach(group=>group.tickers.forEach(ticker=>map.set(ticker.symbol,{name:ticker.name||ticker.symbol,group:group.name})));
+  return map;
+}
+function addPreviewLine(text){const line=document.createElement('div');line.className='cfg-preview-line';line.textContent=text;$('cfgPreviewDetails').appendChild(line);}
+function setConfigEditing(enabled){
+  document.querySelectorAll('#cfgGroups input,#cfgGroups button,#cfgThreshold,#cfgInterval,#cfgAdd,#cfgSave').forEach(element=>{element.disabled=!enabled;});
+}
+function showConfigPreview(draft){
+  pendingConfig=draft; const before=flattenTickers(originalConfig.groups), after=flattenTickers(draft.groups);
+  const added=[...after.keys()].filter(symbol=>!before.has(symbol));
+  const removed=[...before.keys()].filter(symbol=>!after.has(symbol));
+  const changed=[...after.keys()].filter(symbol=>before.has(symbol)&&(before.get(symbol).name!==after.get(symbol).name||before.get(symbol).group!==after.get(symbol).group));
+  const details=$('cfgPreviewDetails'); details.replaceChildren();
+  addPreviewLine('将保存 '+after.size+' 个代码、'+draft.groups.length+' 个分组。');
+  if(draft.anomaly_threshold_pct!==originalConfig.anomaly_threshold_pct)addPreviewLine('异动阈值：'+originalConfig.anomaly_threshold_pct+'% → '+draft.anomaly_threshold_pct+'%');
+  if(draft.fetch_interval_secs!==originalConfig.fetch_interval_secs)addPreviewLine('抓取间隔：'+originalConfig.fetch_interval_secs+' 秒 → '+draft.fetch_interval_secs+' 秒');
+  if(added.length)addPreviewLine('新增：'+added.join('、'));
+  if(removed.length)addPreviewLine('移除：'+removed.join('、'));
+  if(changed.length)addPreviewLine('名称或分组变更：'+changed.map(symbol=>symbol+'（'+before.get(symbol).group+' → '+after.get(symbol).group+'；'+before.get(symbol).name+' → '+after.get(symbol).name+'）').join('；'));
+  if(!added.length&&!removed.length&&!changed.length&&draft.anomaly_threshold_pct===originalConfig.anomaly_threshold_pct&&draft.fetch_interval_secs===originalConfig.fetch_interval_secs)addPreviewLine('与当前配置相同，没有内容变更。');
+  $('cfgPreview').hidden=false; setConfigEditing(false);
+}
+function setConfigNotice(text,kind='info'){
+  const notice=$('cfgNotice'); notice.textContent=text; notice.dataset.kind=kind; notice.hidden=false;
+  notice.style.background=kind==='ok'?'#f0f7f2':(kind==='warn'?'#fff8e6':'#f8faff');
+  notice.style.color=kind==='ok'?'#28633f':(kind==='warn'?'#856000':'#315a91');
+}
+async function waitForUpdatedQuotes(config,baselineUpdated,requestedAt){
+  const expected=config.groups.flatMap(group=>group.tickers.map(ticker=>ticker.symbol));
+  const deadline=Date.now()+360000;
+  while(Date.now()<deadline){
+    try{
+      const response=await fetch('data/quotes.json?_='+Date.now(),{cache:'no-store'});
+      if(response.ok){
+        const snapshot=await response.json();
+        if(Number(snapshot.updated)>baselineUpdated){
+          const bySymbol=new Map((snapshot.quotes||[]).map(quote=>[quote.symbol,quote]));
+          const complete=expected.every(symbol=>{
+            const quote=bySymbol.get(symbol);
+            return quote&&!quote.stale&&Number(quote.last_success_at)>=requestedAt;
+          });
+          if(complete)return snapshot;
+        }
+      }
+    }catch(error){}
+    await new Promise(resolve=>setTimeout(resolve,2500));
+  }
+  return null;
+}
+async function saveConfig(){
+  const message=$('cfgMsg');
+  if(!pendingConfig)return;
+  message.textContent='正在保存…'; message.className='cfg-msg'; $('cfgCommit').disabled=true;
+  const baselineUpdated=lastQuoteUpdated, requestedAt=Math.floor(Date.now()/1000);
+  try{
+    const response=await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(pendingConfig)});
+    const result=await response.json();
+    if(!response.ok||!result.ok)throw new Error(result.error||('HTTP '+response.status));
+    $('thr').value=pendingConfig.anomaly_threshold_pct;
+    if(result.groups_changed){
+      const count=pendingConfig.groups.reduce((sum,group)=>sum+group.tickers.length,0);
+      const pendingMessage='配置已保存，正在获取 '+count+' 个代码的新行情…';
+      message.textContent=pendingMessage; message.className='cfg-msg'; setConfigNotice(pendingMessage);
+      setTimeout(closeCfg,700);
+      const snapshot=await waitForUpdatedQuotes(pendingConfig,baselineUpdated,requestedAt);
+      if(!snapshot){
+        const note='观察池配置已保存，但暂未确认所有代码都收到新行情；请稍后查看，当前行情仍可继续使用。';
+        message.textContent=note; message.className='cfg-msg bad'; setConfigNotice(note,'warn');
+        return;
+      }
+      klCache.clear(); await refresh();
+      if(!quotes.some(q=>q.symbol===curSym))curSym=quotes.some(q=>q.symbol==='SPY')?'SPY':(quotes[0]?quotes[0].symbol:'SPY');
+      await showChart(curSym,curTf,true);
+      const done='行情已更新：'+count+' 个观察代码均收到新数据（'+fmtT(snapshot.updated)+'）。';
+      message.textContent=done; message.className='cfg-msg ok'; setConfigNotice(done,'ok');
+    }else{
+      const done='设置已保存；观察池未变化，因此没有触发新的行情抓取。';
+      message.textContent=done; message.className='cfg-msg ok'; setConfigNotice(done,'ok');
+      setTimeout(closeCfg,1200);
+    }
+  }catch(error){message.textContent='保存失败：'+error.message;message.className='cfg-msg bad';}
+  finally{$('cfgCommit').disabled=false;}
+}
 $('gear').onclick=openCfg;
 $('cfgCancel').onclick=closeCfg;
 $('cfgBg').addEventListener('click',event=>{if(event.target===$('cfgBg'))closeCfg();});
 $('cfgAdd').onclick=()=>{$('cfgGroups').appendChild(makeCfgGroup({name:'新分组',tickers:[]}));};
-$('cfgSave').onclick=async()=>{
-  const message=$('cfgMsg'); message.textContent='保存中…'; message.className='cfg-msg'; $('cfgSave').disabled=true;
-  const groups=[];
-  for(const element of document.querySelectorAll('#cfgGroups .cfg-grp')){
-    const name=element.querySelector('.gname').value.trim()||'未命名';
-    const tickers=[];
-    for(const line of element.querySelector('textarea').value.split('\n')){
-      const value=line.trim(); if(!value)continue;
-      const split=value.indexOf(' ');
-      if(split<0)tickers.push({symbol:value.toUpperCase()});
-      else tickers.push({symbol:value.slice(0,split).toUpperCase(),name:value.slice(split+1).trim()});
-    }
-    groups.push({name,tickers});
-  }
-  try{
-    const response=await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({groups,anomaly_threshold_pct:Number($('cfgThreshold').value),fetch_interval_secs:Number($('cfgInterval').value)})});
-    const result=await response.json();
-    if(!response.ok||!result.ok)throw new Error(result.error||('HTTP '+response.status));
-    $('thr').value=$('cfgThreshold').value;
-    message.textContent='已保存 '+result.tickers+' 个代码；抓取间隔 '+result.fetch_interval_secs+' 秒，服务按此间隔执行。';
-    message.className='cfg-msg ok';
-    setTimeout(async()=>{
-      closeCfg(); klCache.clear(); await refresh();
-      const nextSymbol=quotes.some(q=>q.symbol===curSym)?curSym:(quotes[0]?quotes[0].symbol:'SPY');
-      showChart(nextSymbol,curTf,true);
-    },900);
-  }catch(error){message.textContent='保存失败：'+error.message;message.className='cfg-msg bad';}
-  finally{$('cfgSave').disabled=false;}
+$('cfgSave').onclick=()=>{
+  const message=$('cfgMsg'); message.textContent=''; message.className='cfg-msg';
+  try{showConfigPreview(collectCfgDraft());}
+  catch(error){$('cfgPreview').hidden=true;pendingConfig=null;message.textContent=error.message;message.className='cfg-msg bad';}
 };
+$('cfgCommit').onclick=saveConfig;
+$('cfgEdit').onclick=()=>{$('cfgPreview').hidden=true;pendingConfig=null;setConfigEditing(true);};
 </script>
 </body>
 </html>
