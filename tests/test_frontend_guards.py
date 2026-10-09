@@ -63,8 +63,17 @@ class FrontendGuardTests(unittest.TestCase):
         self.assertIn("function effectiveTheme()", self.html)
         self.assertIn("systemThemeMedia.addEventListener('change',handleSystemThemeChange)", self.html)
         self.assertIn('[data-theme="dark"] body', self.html)
+        self.assertIn('title="主题模式会自动保存到此浏览器"', self.html)
+        self.assertIn("localStorage.setItem(UI_PREF_KEY,JSON.stringify(uiPreferences))", self.html)
         self.assertIn("main.hide-overview", self.html)
         self.assertIn("main.hide-anomalies", self.html)
+
+    def test_market_session_is_dynamic_and_displays_new_york_time(self):
+        self.assertIn('id="marketClock"', self.html)
+        self.assertIn("timeZone:'America/New_York'", self.html)
+        self.assertIn("fmtEtClock.format(new Date(status.as_of))", self.html)
+        self.assertIn("setInterval(updateMarketStage,30000)", self.html)
+        self.assertNotIn("盘前哨", self.html)
 
 
 if __name__ == "__main__":

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Market Glance 盘前哨</title>
+<title>Market Glance · 美股看板</title>
 <script src="assets/lightweight-charts.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -152,10 +152,10 @@
 </head>
 <body>
 <header>
-  <h1>Market Glance <span style="font-weight:400;color:#888;font-size:13px">盘前哨</span></h1>
-  <div class="stage"><span style="color:#999">市场状态</span><span class="dot" id="dot"></span><span id="stage">—</span><span id="countdown" style="color:#999"></span></div>
+  <h1>Market Glance</h1>
+  <div class="stage"><span style="color:#999">纽约时段</span><span class="dot" id="dot"></span><span id="stage">—</span><span id="countdown" style="color:#999"></span><span id="marketClock" title="按纽约交易所时区显示" style="color:#999">纽约时间 —</span></div>
   <div class="quote-update" id="updated">行情最后更新：—</div>
-  <select class="theme-toggle" id="themeToggle" aria-label="主题模式" title="主题模式">
+  <select class="theme-toggle" id="themeToggle" aria-label="主题模式（浅色、深色或系统）" title="主题模式会自动保存到此浏览器">
     <option value="light">浅色模式</option>
     <option value="dark">深色模式</option>
     <option value="system">系统模式</option>
@@ -223,6 +223,7 @@ const TF_LABEL = {'5m':'5m · 近2日 · 含盘前盘后', '15m':'15m · 近1月
 const BENCHMARKS = new Set(['SPY','QQQ','DIA','IWM','^NDX','^IXIC','^GSPC','^DJI','^VIX','^TNX','^RUT']);
 const TAPE_BASES = ['SPY','QQQ','DIA'];
 const fmtT = ts => new Date(ts*1000).toLocaleString('zh-CN',{hour12:false,month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+const fmtEtClock = new Intl.DateTimeFormat('zh-CN',{timeZone:'America/New_York',hour:'2-digit',minute:'2-digit',hour12:false,timeZoneName:'short'});
 const UI_PREF_KEY = 'market-glance-ui-v1';
 let uiPreferences = (()=>{
   const defaults={theme:'light',overviewVisible:true,anomaliesVisible:true};
@@ -274,8 +275,9 @@ async function updateMarketStage(){
     $('stage').textContent = status.label;
     $('dot').className = 'dot '+status.class;
     $('countdown').textContent = status.countdown || '';
+    $('marketClock').textContent = '纽约时间 '+fmtEtClock.format(new Date(status.as_of));
   }catch(e){
-    if(requestId === marketRequestId){$('stage').textContent = '市场状态暂不可用';$('countdown').textContent='';$('dot').className='dot';}
+    if(requestId === marketRequestId){$('stage').textContent = '市场状态暂不可用';$('countdown').textContent='';$('marketClock').textContent='纽约时间 —';$('dot').className='dot';}
   }
 }
 

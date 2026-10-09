@@ -1,5 +1,5 @@
 import unittest
-from datetime import datetime
+from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
 from market_calendar import early_closes, holidays, is_trading_day, market_status
@@ -51,6 +51,12 @@ class MarketCalendarTests(unittest.TestCase):
         self.assertIn("下次盘前", after["countdown"])
         self.assertGreaterEqual((datetime.fromisoformat(after["next_transition"]) -
                                  datetime(2026, 10, 9, 20, 1, tzinfo=ET)).total_seconds(), 0)
+
+    def test_utc_time_is_converted_to_new_york_session(self):
+        # 13:30 UTC is 09:30 EDT on this date, exactly the regular open.
+        status = market_status(datetime(2026, 10, 9, 13, 30, tzinfo=timezone.utc))
+        self.assertEqual(status["class"], "open")
+        self.assertIn("2026-10-09T09:30:00-04:00", status["as_of"])
 
 
 if __name__ == "__main__":
