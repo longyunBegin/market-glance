@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" type="image/png" href="assets/market-glance-logo.png">
 <title>Market Glance · 美股行情看板</title>
-<script src="assets/lightweight-charts.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -151,7 +150,12 @@
   .signal.medium { background: #fff0e4; color: #9b5723; }
   .signal.strong { background: #fbecee; color: #aa444d; }
   .err { padding: 14px 9px; color: #8c97a6; font-size: 11px; line-height: 1.6; }
-  #chart { width: 100%; height: clamp(390px, 42vw, 610px); }
+  #chart { width: 100%; height: clamp(390px, 42vw, 610px); overflow: hidden; }
+  .tradingview-widget-container { width: 100%; height: 100%; }
+  .tradingview-widget-container__widget { width: 100%; height: calc(100% - 22px); }
+  .tradingview-widget-copyright { height: 22px; padding-top: 2px; color: #8792a0; font-size: 10px; text-align: right; }
+  .tradingview-widget-copyright a { color: inherit; text-decoration: none; }
+  .tv-chart-error { padding: 24px; color: #8c97a6; font-size: 12px; line-height: 1.7; }
   .chead { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin: -1px 0 7px; }
   .chead .t { display: flex; align-items: baseline; flex-wrap: wrap; gap: 3px; color: #1c2c40; font-size: 20px; font-weight: 760; letter-spacing: -.04em; }
   .chead .t .name { margin-left: 5px; color: #8491a2; font-size: 11px; font-weight: 450; letter-spacing: 0; }
@@ -161,19 +165,7 @@
   .tfbtn:hover { border-color: #b5c6df; }
   .tfbtn.on { border-color: #3569d4; background: #3569d4; color: #fff; box-shadow: 0 3px 9px rgba(53,105,212,.2); }
   .subbar { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-height: 26px; margin: 3px 0 2px; color: #8491a2; font-size: 10px; }
-  .subbar .ohlc { color: #5e6d80; font-variant-numeric: tabular-nums; }
   .subbar .cnote { margin-left: 8px; color: #a47d34; }
-  .subbar .mato { color: #748196; cursor: pointer; user-select: none; white-space: nowrap; }
-  .subbar .mato input { accent-color: #3569d4; vertical-align: -1px; }
-  .chart-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 7px 13px; margin: 3px 0 5px; color: #7c8999; font-size: 10px; }
-  .chart-legend span { display: inline-flex; align-items: center; gap: 4px; }
-  .chart-legend .session-coverage { color: #39704d; }
-  .chart-legend .session-coverage.no-premarket { color: #9a7332; }
-  .legend-swatch { display: inline-block; width: 8px; height: 8px; border-radius: 2px; background: #20a46a; }
-  .legend-swatch.down { background: #d54a52; }
-  .legend-swatch.ma20 { height: 2px; border-radius: 0; background: #e8a23a; }
-  .legend-swatch.ma50 { height: 2px; border-radius: 0; background: #4d8ed8; }
-  .legend-swatch.previous { height: 0; border-radius: 0; border-top: 1px dashed #8994a2; background: transparent; }
   footer { padding: 5px 20px 22px; color: #8792a0; text-align: center; font-size: 10px; }
   .modal-bg { position: fixed; inset: 0; z-index: 50; display: none; align-items: center; justify-content: center; padding: 16px; background: rgba(15,24,40,.42); backdrop-filter: blur(5px); }
   .modal-bg.open { display: flex; }
@@ -247,10 +239,8 @@
   [data-theme="dark"] .row .qt .ext-c.up, [data-theme="dark"] .tape-item .ext-c.up { color: #54cf91; }
   [data-theme="dark"] .row .qt .ext-c.down, [data-theme="dark"] .tape-item .ext-c.down { color: #ff7770; }
   [data-theme="dark"] .quote-update, [data-theme="dark"] .stage, [data-theme="dark"] .panel h2,
-  [data-theme="dark"] .grp, [data-theme="dark"] .row .nm, [data-theme="dark"] .chart-legend,
+  [data-theme="dark"] .grp, [data-theme="dark"] .row .nm,
   [data-theme="dark"] footer, [data-theme="dark"] .subbar, [data-theme="dark"] .modal .hint { color: #9b9b9b; }
-  [data-theme="dark"] .chart-legend .session-coverage { color: #84c796; }
-  [data-theme="dark"] .chart-legend .session-coverage.no-premarket { color: #ddbd75; }
   [data-theme="dark"] .panel h2 .cn, [data-theme="dark"] .chead .t, [data-theme="dark"] .row .sym,
   [data-theme="dark"] .row .qt .p, [data-theme="dark"] .modal h3, [data-theme="dark"] .cfg-preview h4 { color: #ededed; }
   [data-theme="dark"] .theme-toggle, [data-theme="dark"] .gear, [data-theme="dark"] .layout-controls button,
@@ -291,11 +281,6 @@
   [data-theme="dark"] .mobile-tabs button { color: #aaa; }
   [data-theme="dark"] .mobile-tabs button.on { background: #141414; color: #fff; }
   [data-theme="dark"] .modal-bg { background: rgba(0,0,0,.76); }
-  [data-theme="dark"] .legend-swatch { background: #34c980; }
-  [data-theme="dark"] .legend-swatch.down { background: #f06460; }
-  [data-theme="dark"] .legend-swatch.ma20 { background: #f5b942; }
-  [data-theme="dark"] .legend-swatch.ma50 { background: #78aef5; }
-  [data-theme="dark"] .legend-swatch.previous { border-top-color: #737373; background: transparent; }
   @media (max-width: 700px) {
     header { min-height: 0; flex-wrap: wrap; gap: 8px 10px; padding: 10px 13px; }
     header h1 { margin-right: auto; font-size: 16px; }
@@ -333,7 +318,6 @@
     .watch-controls { grid-template-columns: minmax(0, 1fr) 100px; }
     .cfg-ticker-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; }
     .cfg-ticker-row select { grid-column: 1 / 3; }
-    .chart-legend { gap: 6px 9px; font-size: 9px; }
     .chead .t .name { font-size: 10px; }
   }
 </style>
@@ -375,17 +359,15 @@
   </section>
   <section class="panel" data-panel="chart"><h2>CANDLE<span class="cn">K 线 · 点击标的切换</span></h2>
     <div class="chead"><div class="t"><span id="csym">—</span><span class="name" id="cname"></span><span class="c" id="cchg"></span></div>
-      <div class="tfbar"><span id="tflabel" style="margin-right:4px">当日走势 · 5分钟</span>
-        <button class="tfbtn on" data-tf="5m" title="休市时显示最近一个有数据的交易日">当日走势</button><button class="tfbtn" data-tf="1d">日K</button>
+      <div class="tfbar"><span id="tflabel" style="margin-right:4px">5分钟走势</span>
+        <button class="tfbtn on" data-tf="5m" title="TradingView Widget 5 分钟周期">5分钟</button><button class="tfbtn" data-tf="1d">日K</button>
         <button class="tfbtn" id="refreshChart" type="button" title="重新读取 K 线">↻ 刷新</button>
       </div></div>
-    <div class="subbar"><span><span class="ohlc" id="cohlc"></span><span class="cnote" id="cnote" role="status" aria-live="polite"></span></span>
-      <label class="mato"><input type="checkbox" id="mato" checked> 均线(20/50)</label></div>
-    <div class="chart-legend" aria-label="K 线图例"><span><i class="legend-swatch"></i><i class="legend-swatch down"></i>上涨 / 下跌 K 线与成交量</span><span><i class="legend-swatch ma20"></i>MA20</span><span><i class="legend-swatch ma50"></i>MA50</span><span><i class="legend-swatch previous"></i>前收</span><span id="sessionCoverage" class="session-coverage">盘前覆盖依所选数据源而异（IEX：08:00–09:30 ET）</span></div>
+    <div class="subbar"><span class="cnote" id="cnote" role="status" aria-live="polite">图表来自 TradingView 官方 Widget；北美市场为 Cboe One 延迟行情，与上方报价数据源独立。</span></div>
     <div id="chart" aria-live="polite" aria-busy="false"></div>
   </section>
 </main>
-  <footer id="footer">每只代码可选自动 / Alpaca IEX / Yahoo Finance；报价、涨跌基准与 K 线同源，失败不跨源切换</footer>
+  <footer id="footer">观察池报价使用所选数据源；K 线来自 TradingView 官方 Widget（北美市场为 Cboe One 延迟行情）</footer>
 <div class="modal-bg" id="cfgBg">
   <div class="modal">
     <h3>⚙️ 看板配置</h3>
@@ -403,11 +385,11 @@
     </section>
     <section class="cfg-pane" data-cfg-pane="settings" hidden>
       <div class="cfg-settings">
-        <div class="route-hint">每只代码都可单独选择“自动 / Alpaca IEX / Yahoo Finance”。自动模式下普通美股代码默认走 IEX，指数及带后缀代码默认走 Yahoo；图表和报价使用同一来源，失败时不会跨源切换。注意：IEX 盘前时段为 08:00–09:30 ET，不覆盖美股全市场 04:00 起的早盘；需要更早的盘前 K 线时，请为该代码选择能覆盖该时段的数据源。</div>
+        <div class="route-hint">每只代码都可单独选择观察池报价来源：“自动 / Alpaca IEX / Yahoo Finance”。自动模式下普通美股代码默认走 IEX，指数及带后缀代码默认走 Yahoo；此设置不影响主图，主图始终使用 TradingView 官方 Widget（北美市场为 Cboe One 延迟行情）。</div>
         <label>异动阈值 (%) <input id="cfgThreshold" type="number" min="0.1" max="50" step="0.1"></label>
         <label>抓取间隔 (秒) <input id="cfgInterval" type="number" min="60" max="86400" step="60"></label>
       </div>
-      <div class="hint">Alpaca IEX 仅提供 IEX 交易所的美股成交与 K 线，不是全市场 SIP 汇总；选择 Alpaca 的代码需要在服务器安全配置 APCA_API_KEY_ID / APCA_API_SECRET_KEY。盘前 K 线时段为纽约时间 04:00–09:30；展示范围取决于该来源实际返回的数据。</div>
+      <div class="hint">Alpaca IEX 仅提供 IEX 交易所的美股成交，不是全市场 SIP 汇总；选择 Alpaca 的代码需要在服务器安全配置 APCA_API_KEY_ID / APCA_API_SECRET_KEY。K 线由 TradingView Widget 单独提供。</div>
     </section>
     <div class="mrow">
       <button class="btn primary" id="cfgSave">预览变更</button>
@@ -422,15 +404,14 @@
 </div>
 <script>
 const $ = id => document.getElementById(id);
-let quotes = [], chart = null, series = null, klCache = new Map(), chartRequestId = 0;
-let volSeries = null, ma20 = null, ma50 = null, prevLine = null, chartOk = false, curBars = [], loadedChartSymbol = '', loadedChartTimeframe = '', loadedChartProvider = '';
+let quotes = [], chartRequestId = 0, chartMountedKey = '';
 let curSym = 'SPY', curTf = '5m', marketRequestId = 0, lastQuoteUpdated = 0, pendingConfig = null, originalConfig = null, anomalyFilter = 'all', configuredGroups = [];
-const TF_LABEL = {'5m':'当日走势 · 5分钟', '1d':'日K · 近1年'};
+const TF_LABEL = {'5m':'5分钟走势', '1d':'日K'};
+const TV_INDEX_SYMBOLS = {'^NDX':'NASDAQ:NDX','^IXIC':'NASDAQ:IXIC','^GSPC':'SP:SPX','^DJI':'DJ:DJI','^VIX':'CBOE:VIX','^TNX':'TVC:US10Y','^RUT':'RUSSELL:RUT'};
 const BENCHMARKS = new Set(['SPY','QQQ','DIA','IWM','^NDX','^IXIC','^GSPC','^DJI','^VIX','^TNX','^RUT']);
 const fmtT = ts => new Date(ts*1000).toLocaleString('zh-CN',{hour12:false,month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
 const fmtEtClock = new Intl.DateTimeFormat('zh-CN',{timeZone:'America/New_York',hour:'2-digit',minute:'2-digit',hour12:false,timeZoneName:'short'});
 const fmtEtDate = new Intl.DateTimeFormat('zh-CN',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'});
-const fmtEtClockParts = new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',hour:'2-digit',minute:'2-digit',hour12:false});
 const UI_PREF_KEY = 'market-glance-ui-v1';
 let uiPreferences = (()=>{
   const defaults={theme:'light',overviewVisible:true,anomaliesVisible:true};
@@ -443,11 +424,6 @@ let uiPreferences = (()=>{
 const systemThemeMedia=window.matchMedia?window.matchMedia('(prefers-color-scheme: dark)'):null;
 function effectiveTheme(){
   return uiPreferences.theme==='system'?(systemThemeMedia&&systemThemeMedia.matches?'dark':'light'):uiPreferences.theme;
-}
-function chartPalette(){
-  return effectiveTheme()==='dark'
-    ? {background:'#000000',text:'#c3c3c3',grid:'#242424',up:'#34c980',down:'#f06460',ma20:'#f5b942',ma50:'#78aef5',reference:'#737373',volUp:'rgba(52,201,128,.45)',volDown:'rgba(240,100,96,.45)'}
-    : {background:'#ffffff',text:'#555555',grid:'#f0f0f0',up:'#22a355',down:'#d93025',ma20:'#f5a623',ma50:'#4a90d9',reference:'#c9ccd1',volUp:'rgba(34,163,85,.45)',volDown:'rgba(217,48,37,.45)'};
 }
 function saveUiPreferences(){try{localStorage.setItem(UI_PREF_KEY,JSON.stringify(uiPreferences));}catch(error){}}
 function applyUiPreferences(){
@@ -464,13 +440,6 @@ function applyUiPreferences(){
   toggle.value=uiPreferences.theme;
   const notice=$('cfgNotice');
   if(!notice.hidden && notice.textContent)setConfigNotice(notice.textContent,notice.dataset.kind||'info');
-  if(chart){
-    const colors=chartPalette();
-    chart.applyOptions({layout:{background:{color:colors.background},textColor:colors.text},grid:{vertLines:{color:colors.grid},horzLines:{color:colors.grid}}});
-    series.applyOptions({upColor:colors.up,downColor:colors.down,wickUpColor:colors.up,wickDownColor:colors.down});
-    ma20.applyOptions({color:colors.ma20}); ma50.applyOptions({color:colors.ma50});
-    if(curBars.length)volSeries.setData(curBars.map(bar=>({time:bar.time,value:bar.volume,color:bar.close>=bar.open?colors.volUp:colors.volDown})));
-  }
 }
 
 async function updateMarketStage(){
@@ -648,158 +617,91 @@ function providerForChartSymbol(symbol){
   return /^[A-Z0-9]+$/.test(symbol)?'alpaca_iex':'yahoo';
 }
 
-async function loadKlines(symbol, timeframe, force=false){
-  const provider=providerForChartSymbol(symbol);
-  const key = symbol+'_'+timeframe+'_'+provider;
-  const existing = klCache.get(key);
-  if(!force && existing && existing.expiresAt>Date.now()){
-    return existing.data || existing.promise;
-  }
-  const entry = {data:null, promise:null, expiresAt:Date.now()+30000};
-  const query = '/api/klines?symbol='+encodeURIComponent(symbol)+'&tf='+encodeURIComponent(timeframe)+(force?'&refresh=1':'');
-  entry.promise = (async()=>{
-    const response = await fetch(query, {cache:'no-store'});
-    const result = await response.json();
-    if(!response.ok || !result.ok) throw new Error(result.error||('HTTP '+response.status));
-    if(result.provider&&result.provider!==provider)throw new Error('行情源刚刚变更，请重新加载');
-    entry.data = {symbol:result.symbol,provider:result.provider,candles:result.candles, stale:!!result.stale, updatedAt:result.updated_at, maxAge:result.max_age};
-    entry.expiresAt = Date.now()+Math.max(1,Number(result.max_age)||30)*1000;
-    entry.promise = null;
-    return entry.data;
-  })();
-  klCache.set(key, entry);
-  try { return await entry.promise; }
-  catch(error){ if(klCache.get(key)===entry) klCache.delete(key); throw error; }
+function tradingViewSymbol(symbol){
+  if(TV_INDEX_SYMBOLS[symbol])return TV_INDEX_SYMBOLS[symbol];
+  const stockholm=String(symbol).match(/^([A-Z0-9-]+)\.ST$/i);
+  if(stockholm)return 'OMXSTO:'+stockholm[1];
+  return symbol;
 }
 
-function sma(bars, n){
-  const out=[]; let sum=0;
-  for(let i=0;i<bars.length;i++){
-    sum+=bars[i].close; if(i>=n) sum-=bars[i-n].close;
-    if(i>=n-1) out.push({time:bars[i].time,value:+(sum/n).toFixed(2)});
-  }
-  return out;
+function mountTradingViewWidget(symbol,timeframe,requestId){
+  const root=$('chart');
+  const theme=effectiveTheme();
+  const widgetContainer=document.createElement('div');
+  widgetContainer.className='tradingview-widget-container';
+  const widgetHost=document.createElement('div');
+  widgetHost.className='tradingview-widget-container__widget';
+  const attribution=document.createElement('div');
+  attribution.className='tradingview-widget-copyright';
+  const link=document.createElement('a');
+  link.href='https://www.tradingview.com/';
+  link.target='_blank';
+  link.rel='noopener noreferrer';
+  link.textContent='由 TradingView 提供';
+  attribution.appendChild(link);
+  root.replaceChildren(widgetContainer);
+  widgetContainer.append(widgetHost,attribution);
+  const options={
+    autosize:true,
+    symbol:tradingViewSymbol(symbol),
+    interval:timeframe==='1d'?'D':'5',
+    timezone:'America/New_York',
+    theme,
+    style:'1',
+    locale:'zh_CN',
+    allow_symbol_change:false,
+    hide_side_toolbar:false,
+    hide_top_toolbar:false,
+    withdateranges:true,
+    save_image:false,
+    hide_volume:false,
+    calendar:false,
+    support_host:'https://www.tradingview.com'
+  };
+  const script=document.createElement('script');
+  script.type='text/javascript';
+  script.src='https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
+  script.async=true;
+  script.textContent=JSON.stringify(options);
+  script.onload=()=>{
+    if(requestId!==chartRequestId)return;
+    root.setAttribute('aria-busy','false');
+    $('cnote').textContent='TradingView 官方 Widget 行情；北美市场为 Cboe One 延迟数据，与上方报价数据源独立。';
+  };
+  script.onerror=()=>{
+    if(requestId!==chartRequestId)return;
+    root.setAttribute('aria-busy','false');
+    const error=document.createElement('div');
+    error.className='tv-chart-error';
+    error.textContent='TradingView Widget 未能加载。请检查网络或内容拦截设置，再点“刷新”重试。当前不会保留其他标的的图表。';
+    root.replaceChildren(error);
+    $('cnote').textContent='TradingView 图表加载失败。';
+  };
+  widgetContainer.appendChild(script);
 }
 
-function etDateKey(timestamp){
-  const parts=Object.fromEntries(fmtEtDate.formatToParts(new Date(timestamp*1000)).map(part=>[part.type,part.value]));
-  return parts.year+'-'+parts.month+'-'+parts.day;
-}
-function latestIntradaySession(bars){
-  if(!bars.length)return bars;
-  const latestDate=bars.reduce((latest,bar)=>{const date=etDateKey(bar.time);return date>latest?date:latest;},'');
-  return bars.filter(bar=>etDateKey(bar.time)===latestDate);
-}
-
-function setPremarketStatus(bars,timeframe,state='loaded',provider=providerForChartSymbol(curSym)){
-  const label=$('sessionCoverage');
-  if(!label)return;
-  label.hidden=timeframe!=='5m';
-  if(timeframe!=='5m')return;
-  label.classList.remove('no-premarket');
-  if(state==='loading'){
-    label.textContent='正在读取盘前数据（纽约时间 04:00–09:30）…';
-    return;
-  }
-  if(state==='error'){
-    label.textContent='当前标的未加载成功；未显示其他标的的盘前数据';
-    label.classList.add('no-premarket');
-    return;
-  }
-  const today=etDateKey(Math.floor(Date.now()/1000));
-  const latestDate=bars.reduce((latest,bar)=>{const date=etDateKey(bar.time);return date>latest?date:latest;},'');
-  const hasToday=bars.some(bar=>etDateKey(bar.time)===today);
-  const clock=Object.fromEntries(fmtEtClockParts.formatToParts(new Date()).map(part=>[part.type,part.value]));
-  const currentEtMinutes=Number(clock.hour)*60+Number(clock.minute);
-  if(!hasToday){
-    label.classList.add('no-premarket');
-    if(provider==='alpaca_iex'&&currentEtMinutes<480){
-      label.textContent='Alpaca IEX 的盘前从 08:00 ET 开始；当前纽约时间尚未到 IEX 盘前开市。走势日期为 '+(latestDate||'暂无')+'，因此没有当天盘前 K 线。';
-    }else{
-      label.textContent='当前没有当天盘前 K 线；图中走势日期为 '+(latestDate||'暂无')+'（以所选数据源实际返回为准）。';
-    }
-    return;
-  }
-  const premarketCount=bars.filter(bar=>{
-    if(etDateKey(bar.time)!==today)return false;
-    const parts=Object.fromEntries(fmtEtClockParts.formatToParts(new Date(bar.time*1000)).map(part=>[part.type,part.value]));
-    const minutes=Number(parts.hour)*60+Number(parts.minute);
-    return minutes>=240&&minutes<570;
-  }).length;
-  if(premarketCount){
-    label.textContent='已显示 '+premarketCount+' 根盘前 K 线（04:00–09:30 ET）';
-  }else{
-    label.textContent=provider==='alpaca_iex'
-      ?'当天已收到 K 线，但 IEX 仅覆盖 08:00–09:30 ET 的盘前时段；全市场 04:00 起的早盘不在此来源内。'
-      :'该交易日未收到盘前 K 线（支持 04:00–09:30 ET；以来源返回为准）';
-    label.classList.add('no-premarket');
-  }
-}
-
-function clearChartData(){
-  if(series)series.setData([]);
-  if(volSeries)volSeries.setData([]);
-  if(ma20)ma20.setData([]);
-  if(ma50)ma50.setData([]);
-  if(prevLine&&series){series.removePriceLine(prevLine);prevLine=null;}
-  curBars=[]; loadedChartSymbol=''; loadedChartTimeframe=''; loadedChartProvider='';
-  $('cohlc').textContent='';
-  if(chart)chart.timeScale().fitContent();
-}
-
-async function showChart(symbol, timeframe, force=false){
-  symbol = symbol || curSym; timeframe = timeframe || curTf;
+function showChart(symbol,timeframe,force=false){
+  symbol=symbol||curSym;
+  timeframe=timeframe||curTf;
   const selectionChanged=symbol!==curSym;
-  const timeframeChanged=timeframe!==curTf;
-  const providerChanged=!!loadedChartProvider&&loadedChartProvider!==providerForChartSymbol(symbol);
-  curSym=symbol; curTf=timeframe;
-  const requestId=++chartRequestId;
-  if(selectionChanged) renderDashboard();
+  curSym=symbol;
+  curTf=timeframe;
+  const key=JSON.stringify([tradingViewSymbol(symbol),timeframe,effectiveTheme()]);
+  const shouldMount=force||key!==chartMountedKey;
+  const requestId=shouldMount?++chartRequestId:chartRequestId;
+  if(selectionChanged)renderDashboard();
   syncChartHeader(symbol);
   activateMobilePanel('chart');
   document.querySelectorAll('[data-sym]').forEach(el=>el.classList.toggle('active',el.dataset.sym===symbol));
   document.querySelectorAll('.tfbtn[data-tf]').forEach(el=>el.classList.toggle('on',el.dataset.tf===timeframe));
-  if(selectionChanged||timeframeChanged||providerChanged)clearChartData();
-  setPremarketStatus([],timeframe,'loading',providerForChartSymbol(symbol));
-  $('cnote').textContent='正在加载 '+symbol+' · '+(TF_LABEL[timeframe]||timeframe);
-  $('cohlc').textContent=''; $('chart').setAttribute('aria-busy','true');
-  if(!chartOk){$('chart').setAttribute('aria-busy','false');return;}
-  try{
-    const data=await loadKlines(symbol,timeframe,force);
-    if(requestId!==chartRequestId) return;
-    if(data.symbol&&data.symbol!==symbol)throw new Error('返回代码不匹配：'+data.symbol);
-    let bars=data.candles.map(c=>({time:c[0],open:c[1],high:c[2],low:c[3],close:c[4],volume:c[5]||0})).sort((a,b)=>a.time-b.time);
-    if(timeframe==='5m')bars=latestIntradaySession(bars);
-    if(!bars.length) throw new Error('当前周期没有可用 K 线');
-    series.setData(bars);
-    const colors=chartPalette();
-    volSeries.setData(bars.map(b=>({time:b.time,value:b.volume,color:b.close>=b.open?colors.volUp:colors.volDown})));
-    const showMA=$('mato').checked;
-    ma20.setData(sma(bars,20)); ma50.setData(sma(bars,50));
-    ma20.applyOptions({visible:showMA}); ma50.applyOptions({visible:showMA});
-    if(prevLine){series.removePriceLine(prevLine);prevLine=null;}
-    const quote=quotes.find(item=>item.symbol===symbol);
-    if(quote && quote.prev_close){prevLine=series.createPriceLine({price:quote.prev_close,color:colors.reference,lineWidth:1,lineStyle:LightweightCharts.LineStyle.Dashed,title:'前收'});}
-    chart.applyOptions({timeScale:{timeVisible:timeframe!=='1d'}});
-    chart.timeScale().fitContent(); curBars=bars; loadedChartSymbol=symbol; loadedChartTimeframe=timeframe; loadedChartProvider=data.provider||providerForChartSymbol(symbol);
-    setPremarketStatus(bars,timeframe,'loaded',data.provider||providerForChartSymbol(symbol));
-    syncChartHeader(symbol); $('tflabel').textContent=TF_LABEL[timeframe]||timeframe;
+  $('tflabel').textContent=TF_LABEL[timeframe]||timeframe;
+  if(shouldMount){
+    chartMountedKey=key;
+    $('chart').setAttribute('aria-busy','true');
+    $('cnote').textContent='正在加载 '+symbol+' · TradingView 官方图表…';
+    mountTradingViewWidget(symbol,timeframe,requestId);
+  }else{
     $('chart').setAttribute('aria-busy','false');
-    const updatedLabel=data.updatedAt?'K 线数据更新时间 '+fmtT(data.updatedAt):'K 线数据已加载';
-    const sessionLabel=timeframe==='5m'?' · 走势日期 '+fmtEtDate.format(new Date(bars[bars.length-1].time*1000))+'（纽约时间）':'';
-    if(data.stale) $('cnote').textContent=updatedLabel+sessionLabel+' · 当前为旧缓存（本轮抓取失败）';
-    else if(data.updatedAt && Date.now()/1000-data.updatedAt>3600) $('cnote').textContent=updatedLabel+sessionLabel+' · 数据较旧，等待下一轮服务端抓取';
-    else $('cnote').textContent=updatedLabel+sessionLabel;
-  }catch(error){
-    if(requestId===chartRequestId){
-      $('chart').setAttribute('aria-busy','false');
-      const matchingPrevious=loadedChartSymbol===symbol&&loadedChartTimeframe===timeframe&&loadedChartProvider===providerForChartSymbol(symbol)&&curBars.length>0;
-      if(!matchingPrevious)clearChartData();
-      if(matchingPrevious)setPremarketStatus(curBars,timeframe,'loaded',loadedChartProvider);
-      else setPremarketStatus([],timeframe,'error',providerForChartSymbol(symbol));
-      const previous=matchingPrevious?'仍显示 '+symbol+'（'+timeframe+'）同标的上次成功数据。':'当前没有可用的 '+symbol+' 图表数据；不会显示其他标的的 K 线。';
-      $('cnote').textContent='图表数据未更新：'+symbol+'（'+error.message+'）。'+previous;
-    }
   }
 }
 
@@ -831,7 +733,7 @@ async function refresh(){
       if(configResponse.ok){
         const config=await configResponse.json();
         if(Array.isArray(config.groups))configuredGroups=config.groups;
-        $('footer').textContent='每只代码可设自动 / Alpaca IEX / Yahoo Finance；报价、涨跌基准与 K 线同源，失败不跨源切换 · 抓取间隔按配置执行';
+        $('footer').textContent='观察池报价可设自动 / Alpaca IEX / Yahoo Finance；K 线来自 TradingView 官方 Widget（北美市场为 Cboe One 延迟行情）';
       }
     }catch(error){}
     const response=await fetch('data/quotes.json?_='+Date.now(),{cache:'no-store'});
@@ -848,44 +750,11 @@ async function refresh(){
     if($('thr').dataset.init!=='1'){$('thr').value=data.anomaly_threshold_pct||3;$('thr').dataset.init='1';}
     renderDashboard();
     syncChartHeader(curSym);
-    if(hadQuotes && previousSelection!==curSym && chartOk) showChart(curSym,curTf);
+    if(hadQuotes && previousSelection!==curSym) showChart(curSym,curTf);
   }catch(error){
     ensureSelectedSymbol(); renderDashboard(); syncChartHeader(curSym);
     $('updated').textContent=configuredGroups.length&&!quotes.length?'行情快照尚未生成；已显示已保存的观察代码':'行情最后更新：读取失败，稍后重试';
   }
-}
-
-if(typeof LightweightCharts!=='undefined'){
-  chartOk=true;
-  const colors=chartPalette();
-  function formatChartTimeTick(time){
-    if(typeof time!=='number'){
-      const date=new Date(Date.UTC(time.year,time.month-1,time.day));
-      return new Intl.DateTimeFormat(undefined,{month:'numeric',day:'numeric',timeZone:'UTC'}).format(date);
-    }
-    const date=new Date(time*1000);
-    return curTf==='1d'
-      ?new Intl.DateTimeFormat(undefined,{month:'numeric',day:'numeric',timeZone:'UTC'}).format(date)
-      :new Intl.DateTimeFormat(undefined,{hour:'2-digit',minute:'2-digit'}).format(date);
-  }
-  chart=LightweightCharts.createChart($('chart'),{layout:{background:{color:colors.background},textColor:colors.text},grid:{vertLines:{color:colors.grid},horzLines:{color:colors.grid}},timeScale:{timeVisible:true,tickMarkFormatter:formatChartTimeTick}});
-  series=chart.addCandlestickSeries({upColor:colors.up,downColor:colors.down,wickUpColor:colors.up,wickDownColor:colors.down,borderVisible:false});
-  volSeries=chart.addHistogramSeries({priceFormat:{type:'volume'},priceScaleId:''});
-  chart.priceScale('').applyOptions({scaleMargins:{top:.84,bottom:0}});
-  chart.priceScale('right').applyOptions({scaleMargins:{top:.06,bottom:.18}});
-  ma20=chart.addLineSeries({color:colors.ma20,lineWidth:1,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
-  ma50=chart.addLineSeries({color:colors.ma50,lineWidth:1,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
-  if(window.ResizeObserver) new ResizeObserver(entries=>{const rect=entries[0].contentRect;chart.applyOptions({width:rect.width,height:rect.height});}).observe($('chart'));
-  const fmtVol=n=>n>=1e8?(n/1e8).toFixed(2)+'亿':(n>=1e4?(n/1e4).toFixed(1)+'万':''+n);
-  chart.subscribeCrosshairMove(param=>{
-    if(!param||!param.time||!param.seriesData){$('cohlc').textContent='';return;}
-    const bar=param.seriesData.get(series); if(!bar){$('cohlc').textContent='';return;}
-    const volume=param.seriesData.get(volSeries);
-    $('cohlc').textContent='开 '+bar.open+' · 高 '+bar.high+' · 低 '+bar.low+' · 收 '+bar.close+(volume&&volume.value?' · 量 '+fmtVol(volume.value):'');
-  });
-  $('mato').addEventListener('change',()=>{const visible=$('mato').checked;ma20.applyOptions({visible});ma50.applyOptions({visible});});
-}else{
-  const error=document.createElement('div'); error.className='err'; error.style.padding='24px'; error.textContent='图表库加载失败，请刷新页面重试'; $('chart').replaceChildren(error);
 }
 
 $('thr').addEventListener('input',renderDashboard);
@@ -905,12 +774,12 @@ document.querySelectorAll('[data-layout-toggle]').forEach(button=>{
 });
 $('themeToggle').onchange=()=>{
   uiPreferences.theme=$('themeToggle').value; saveUiPreferences(); applyUiPreferences();
-  if(chartOk)showChart(curSym,curTf);
+  showChart(curSym,curTf);
 };
 function handleSystemThemeChange(){
   if(uiPreferences.theme!=='system')return;
   applyUiPreferences();
-  if(chartOk)showChart(curSym,curTf);
+  showChart(curSym,curTf);
 }
 if(systemThemeMedia){
   if(systemThemeMedia.addEventListener)systemThemeMedia.addEventListener('change',handleSystemThemeChange);
@@ -920,7 +789,6 @@ applyUiPreferences();
 updateMarketStage(); setInterval(updateMarketStage,30000);
 refresh().then(()=>showChart(curSym,'5m'));
 setInterval(refresh,60000);
-setInterval(()=>showChart(curSym,curTf),60000);
 
 // Configuration editor uses DOM properties, never interpolates user text into HTML.
 function makeCfgTicker(ticker={}){
@@ -1072,7 +940,7 @@ async function saveConfig(){
         message.textContent=note; message.className='cfg-msg bad'; setConfigNotice(note,'warn');
         return;
       }
-      klCache.clear(); await refresh();
+      await refresh();
       ensureSelectedSymbol();
       await showChart(curSym,curTf,true);
       const done='行情已更新：'+count+' 个观察代码均收到新数据（'+fmtT(snapshot.updated)+'）。';

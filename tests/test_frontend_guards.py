@@ -17,11 +17,12 @@ class FrontendGuardTests(unittest.TestCase):
         self.assertIn("name.value=group.name||''", self.html)
         self.assertNotRegex(self.html, re.compile(r"innerHTML\s*=\s*`[^`]*\$\{"))
 
-    def test_chart_requests_expire_and_ignore_old_responses(self):
-        self.assertIn("expiresAt>Date.now()", self.html)
-        self.assertIn("if(requestId!==chartRequestId) return", self.html)
-        self.assertIn("setInterval(()=>showChart(curSym,curTf),60000)", self.html)
-        self.assertIn("&refresh=1", self.html)
+    def test_chart_uses_tradingview_widget_not_local_klines(self):
+        self.assertIn("https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js", self.html)
+        self.assertNotIn("assets/lightweight-charts.js", self.html)
+        self.assertNotIn("'/api/klines", self.html)
+        self.assertIn("interval:timeframe==='1d'?'D':'5'", self.html)
+        self.assertNotIn("setInterval(()=>showChart(curSym,curTf),60000)", self.html)
 
     def test_layout_has_tablet_and_phone_breakpoints(self):
         self.assertIn('@media (min-width: 701px) and (max-width: 1120px)', self.html)
@@ -70,18 +71,16 @@ class FrontendGuardTests(unittest.TestCase):
         self.assertIn("configuredGroups=pendingConfig.groups", self.html)
         self.assertIn("行情快照尚未生成；已显示已保存的观察代码", self.html)
 
-    def test_selection_and_chart_title_follow_successful_data(self):
+    def test_widget_switch_clears_old_symbol_and_ignores_stale_load_events(self):
         self.assertIn("function ensureSelectedSymbol()", self.html)
-        self.assertIn("if(requestId!==chartRequestId) return", self.html)
-        show_chart = self.html[self.html.index("async function showChart"):self.html.index("function bindClicks")]
-        self.assertLess(show_chart.index("syncChartHeader(symbol)"), show_chart.index("const data=await loadKlines"))
-        self.assertIn("loadedChartSymbol=symbol; loadedChartTimeframe=timeframe", show_chart)
-        self.assertIn("$('chart').setAttribute('aria-busy','true')", self.html)
-        self.assertIn("图表数据未更新：'+symbol", self.html)
-        self.assertIn("if(selectionChanged||timeframeChanged||providerChanged)clearChartData()", show_chart)
-        self.assertIn("不会显示其他标的的 K 线", show_chart)
-        self.assertNotIn("图中仍显示", show_chart)
-        self.assertIn("function clearChartData()", self.html)
+        self.assertIn("if(requestId!==chartRequestId)return", self.html)
+        show_chart = self.html[self.html.index("function showChart"):self.html.index("function bindClicks")]
+        self.assertIn("syncChartHeader(symbol)", show_chart)
+        self.assertIn("if(selectionChanged)renderDashboard()", show_chart)
+        self.assertIn("root.replaceChildren(widgetContainer)", self.html)
+        self.assertIn("root.replaceChildren(error)", self.html)
+        self.assertIn("当前不会保留其他标的的图表", self.html)
+        self.assertIn("chartMountedKey=key", show_chart)
 
     def test_watchlist_search_sort_and_anomaly_direction_filters(self):
         self.assertIn('id="watchSearch" type="search"', self.html)
@@ -94,34 +93,30 @@ class FrontendGuardTests(unittest.TestCase):
         self.assertIn("anomalyFilter==='up'?anomalies.filter(q=>q.chg_pct>0)", self.html)
         self.assertIn("anomalyFilter==='down'?anomalies.filter(q=>q.chg_pct<0)", self.html)
 
-    def test_chart_has_selected_name_quote_and_color_legend(self):
+    def test_chart_header_keeps_selected_quote_source_clear(self):
         self.assertIn('id="cname"', self.html)
         self.assertIn("$('cname').textContent=quote?[quote.name,providerLabel(quote.provider)].filter(Boolean).join(' · '):''", self.html)
         self.assertIn("font-variant-numeric: tabular-nums; font-family: ui-monospace", self.html)
-        self.assertIn('aria-label="K 线图例"', self.html)
-        self.assertIn('K 线数据更新时间 ', self.html)
+        self.assertIn("Cboe One 延迟数据", self.html)
         self.assertIn("syncChartHeader(curSym)", self.html)
 
-    def test_intraday_chart_axis_uses_device_local_timezone(self):
-        self.assertIn("tickMarkFormatter:formatChartTimeTick", self.html)
-        self.assertIn("function formatChartTimeTick(time)", self.html)
-        self.assertIn("hour:'2-digit',minute:'2-digit'", self.html)
-        self.assertIn("return curTf==='1d'", self.html)
-        self.assertIn("timeZone:'UTC'", self.html)
+    def test_widget_uses_new_york_timezone_selected_symbol_and_theme(self):
+        self.assertIn("timezone:'America/New_York'", self.html)
+        self.assertIn("symbol:tradingViewSymbol(symbol)", self.html)
+        self.assertIn("theme,", self.html)
+        self.assertIn("JSON.stringify([tradingViewSymbol(symbol),timeframe,effectiveTheme()])", self.html)
+        self.assertIn("allow_symbol_change:false", self.html)
+        self.assertIn("'^NDX':'NASDAQ:NDX'", self.html)
+        self.assertIn("return 'OMXSTO:'+stockholm[1]", self.html)
 
-    def test_chart_offers_daily_and_latest_intraday_session_only(self):
+    def test_chart_offers_intraday_and_daily_widget_periods(self):
         chart_periods = re.findall(r'<button class="tfbtn[^\"]*" data-tf="([^\"]+)"', self.html)
         self.assertEqual(chart_periods, ["5m", "1d"])
-        self.assertIn('data-tf="5m" title="休市时显示最近一个有数据的交易日">当日走势</button>', self.html)
+        self.assertIn('data-tf="5m" title="TradingView Widget 5 分钟周期">5分钟</button>', self.html)
         self.assertIn('data-tf="1d">日K</button>', self.html)
-        self.assertIn("function latestIntradaySession(bars)", self.html)
-        self.assertIn("bars.filter(bar=>etDateKey(bar.time)===latestDate)", self.html)
-        self.assertIn("走势日期 ", self.html)
-        self.assertIn('id="sessionCoverage"', self.html)
-        self.assertIn("04:00–09:30 ET", self.html)
-        self.assertIn("function setPremarketStatus(bars,timeframe,state='loaded',provider=providerForChartSymbol(curSym))", self.html)
-        self.assertIn("Alpaca IEX 的盘前从 08:00 ET 开始", self.html)
-        self.assertIn("const hasToday=bars.some(bar=>etDateKey(bar.time)===today)", self.html)
+        self.assertIn("'5m':'5分钟走势', '1d':'日K'", self.html)
+        self.assertIn("interval:timeframe==='1d'?'D':'5'", self.html)
+        self.assertNotIn('id="sessionCoverage"', self.html)
 
     def test_mobile_tabs_and_config_editor_validate_before_preview(self):
         self.assertIn('data-panel-tab="overview"', self.html)
@@ -152,6 +147,7 @@ class FrontendGuardTests(unittest.TestCase):
         self.assertIn("q.price==null?'失败':'旧'", self.html)
         self.assertIn("每只代码都可单独选择", self.html)
         self.assertIn("自动模式下普通美股代码默认走 IEX", self.html)
+        self.assertIn("此设置不影响主图", self.html)
         self.assertIn("provider_mode:row.querySelector('.ticker-provider').value", self.html)
         self.assertIn("providerForChartSymbol(symbol)", self.html)
         self.assertNotIn('id="cfgProvider"', self.html)
@@ -183,7 +179,8 @@ class FrontendGuardTests(unittest.TestCase):
         self.assertIn('[data-theme="dark"] { color-scheme: dark; background: #000; }', self.html)
         self.assertIn('[data-theme="dark"] body { background: #000; color: #ededed; }', self.html)
         self.assertIn('[data-theme="dark"] header, [data-theme="dark"] .tape, [data-theme="dark"] .panel, [data-theme="dark"] .modal { background: #000;', self.html)
-        self.assertIn("? {background:'#000000'", self.html)
+        self.assertIn("theme,", self.html)
+        self.assertIn("effectiveTheme()", self.html)
 
     def test_market_session_is_dynamic_and_displays_new_york_time(self):
         self.assertIn('id="marketClock"', self.html)
