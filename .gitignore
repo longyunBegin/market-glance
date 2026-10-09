@@ -1,0 +1,14 @@
+# 运行时数据（每 5 分钟由 fetch.py 生成，不要提交）
+data/quotes.json
+data/klines/
+
+# 本地真连接参数（个人环境，不入仓）
+tunnel-local.sh
+
+# config.json 保存前的备份
+config.json.bak
+config.json.tmp
+
+# Python 缓存
+__pycache__/
+*.pyc

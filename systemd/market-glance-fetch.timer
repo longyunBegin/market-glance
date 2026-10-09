@@ -1,0 +1,10 @@
+[Unit]
+Description=Run market-glance fetcher every 5 minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+Unit=market-glance-fetch.service
+
+[Install]
+WantedBy=timers.target

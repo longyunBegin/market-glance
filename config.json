@@ -1,0 +1,1 @@
+{"anomaly_threshold_pct":3.0,"fetch_interval_secs":300,"groups":[{"name":"观察池","tickers":[{"name":"示例股票","symbol":"AAPL"}]}],"www_port":8090}
