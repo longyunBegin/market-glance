@@ -20,6 +20,15 @@ class WidgetKitSupportTests(unittest.TestCase):
         self.assertIn("MarketGlanceWidgetExtension.appex in Embed App Extensions", contents)
         self.assertIn("MACOSX_DEPLOYMENT_TARGET = 14.0", contents)
 
+    def test_app_opens_local_dashboard_in_native_webview(self):
+        source = (WIDGET / "MarketGlanceApp.swift").read_text(encoding="utf-8")
+        self.assertIn("import WebKit", source)
+        self.assertIn('WindowGroup("Market Glance")', source)
+        self.assertIn("WKWebView", source)
+        self.assertIn(r"http://127.0.0.1:\(port)/", source)
+        self.assertIn("DashboardUnavailableView", source)
+        self.assertNotIn("NSWorkspace.shared.open", source)
+
     def test_widget_reads_only_local_quote_snapshot_and_supports_two_sizes(self):
         source = (WIDGET / "MarketGlanceWidget.swift").read_text(encoding="utf-8")
         self.assertIn("http://127.0.0.1:\\(port)/data/quotes.json", source)
@@ -59,6 +68,7 @@ class WidgetKitSupportTests(unittest.TestCase):
         self.assertIn('cp -R "$SRC/macos/widget" "$APP_DIR/macos/widget"', installer)
         self.assertIn('bash "$APP_DIR/macos/install-widget.sh" "$PORT"', installer)
         self.assertIn("if command -v xcodebuild", installer)
+        self.assertLess(installer.index('for _ in $(seq 1 30)'), installer.index("if command -v xcodebuild"))
         self.assertIn("Market Glance.app", (MACOS / "uninstall.sh").read_text(encoding="utf-8"))
 
 

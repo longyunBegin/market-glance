@@ -119,12 +119,6 @@ if source not in script:
     raise SystemExit("ERROR: Chrome 扩展端口模板不存在。")
 path.write_text(script.replace(source, f"const API_PORT = {int(sys.argv[2])};"), encoding="utf-8")
 PY
-if command -v xcodebuild >/dev/null 2>&1; then
-  bash "$APP_DIR/macos/install-widget.sh" "$PORT"
-else
-  echo "未检测到 Xcode；看板和 Chrome 扩展已安装，小组件可稍后运行："
-  echo "bash \"$APP_DIR/macos/install-widget.sh\" $PORT"
-fi
 URL="http://127.0.0.1:$PORT"
 ready=0
 for _ in $(seq 1 30); do
@@ -138,7 +132,13 @@ if [[ "$ready" != "1" ]]; then
   echo "ERROR: 看板服务未能启动；请查看 $LOG_DIR/web-error.log。" >&2
   exit 1
 fi
-/usr/bin/open "$URL"
+if command -v xcodebuild >/dev/null 2>&1; then
+  bash "$APP_DIR/macos/install-widget.sh" "$PORT"
+else
+  echo "未检测到 Xcode；看板和 Chrome 扩展已安装，小组件可稍后运行："
+  echo "bash \"$APP_DIR/macos/install-widget.sh\" $PORT"
+  /usr/bin/open "$URL"
+fi
 echo "Market Glance 已安装并启动：$URL"
 echo "登录后会自动启动；本地配置和缓存位于：$SUPPORT_DIR"
 echo "Chrome 工具栏扩展位于：$APP_DIR/chrome-extension"

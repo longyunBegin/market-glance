@@ -19,6 +19,8 @@ server.py ── 页面服务 + /api/config + /api/market-status
     │
 index.html ── 单页看板；主图嵌入 TradingView Advanced Chart Widget
     │
+macOS SwiftUI + WKWebView App ── 在原生窗口内显示本机看板
+    │
 macOS WidgetKit ── 只读 127.0.0.1:<配置端口>/data/quotes.json
 ```
 
@@ -37,7 +39,7 @@ Twelve Data Basic 通过独立的 `twelvedata_internal.py` 手动采集，结果
 
 ### macOS（轻量运行）
 
-无需 Electron；使用 macOS 自带的 `launchd` 启动本机服务，再用默认浏览器打开看板。需要 Python 3.9+；不需要管理员权限。
+无需 Electron；使用 macOS 自带的 `launchd` 启动本机服务。安装 Xcode 时会构建轻量 SwiftUI/WKWebView App，在原生窗口内显示看板；未安装 Xcode 时回退到默认浏览器。需要 Python 3.9+；不需要管理员权限。
 
 ```bash
 git clone https://github.com/longyunBegin/market-glance.git
@@ -45,9 +47,9 @@ cd market-glance
 bash macos/install.sh
 ```
 
-安装脚本将应用复制到 `~/Library/Application Support/Market Glance`，创建两个当前用户的 LaunchAgent（网页服务常驻；抓取任务每分钟唤醒，并遵守配置的抓取间隔），然后打开本机看板。现有本地配置会保留；首次安装时使用仓库内的 `config.json`（若有），否则采用示例配置。设置、行情缓存和日志都保存在上述目录。运行 `bash macos/uninstall.sh` 可停止并移除自动启动项；为避免误删数据，本地设置、缓存和日志会保留。
+安装脚本将应用复制到 `~/Library/Application Support/Market Glance`，创建两个当前用户的 LaunchAgent（网页服务常驻；抓取任务每分钟唤醒，并遵守配置的抓取间隔），并在本机服务就绪后打开看板。现有本地配置会保留；首次安装时使用仓库内的 `config.json`（若有），否则采用示例配置。设置、行情缓存和日志都保存在上述目录。运行 `bash macos/uninstall.sh` 可停止并移除自动启动项；为避免误删数据，本地设置、缓存和日志会保留。
 
-**原生 macOS 行情小组件（macOS 14+）**：安装时若检测到 Xcode，脚本会构建并安装 `~/Applications/Market Glance.app`，使用小组件图库添加“Market Glance 行情”，支持小号与中号布局。小组件使用大号现价、涨跌幅和横向观察代码列表；深色外观为纯黑，浅色外观跟随 macOS 系统外观。数据只从本机看板服务读取，不读取钥匙串或访问行情源；其更新时间由 WidgetKit 系统计划管理，非实时推送。若安装时没有 Xcode，可之后安装 Xcode 并运行 `bash ~/Library/Application\ Support/Market\ Glance/macos/install-widget.sh <端口>`；端口应与 `config.json` 中的 `www_port` 相同。网页内已有主题偏好不受小组件影响。
+**原生 macOS App 与行情小组件（macOS 14+）**：安装时若检测到 Xcode，脚本会构建并安装 `~/Applications/Market Glance.app`，并在 App 窗口内直接显示看板，无需跳转浏览器。使用小组件图库添加“Market Glance 行情”，支持小号与中号布局。小组件使用大号现价、涨跌幅和横向观察代码列表；深色外观为纯黑，浅色外观跟随 macOS 系统外观。数据只从本机看板服务读取，不读取钥匙串或访问行情源；其更新时间由 WidgetKit 系统计划管理，非实时推送。若安装时没有 Xcode，可之后安装 Xcode 并运行 `bash ~/Library/Application\ Support/Market\ Glance/macos/install-widget.sh <端口>`；端口应与 `config.json` 中的 `www_port` 相同。网页内已有主题偏好不受小组件影响。
 
 **Chrome 工具栏快看（最小版）**：安装后在 Chrome 打开 `chrome://extensions`，启用“开发者模式”，点击“加载已解压的扩展程序”，选择 `~/Library/Application Support/Market Glance/app/chrome-extension`。之后点击工具栏中的 Market Glance 图标即可查看本机观察池行情；弹窗只读取本机行情快照，不接触钥匙串密钥。扩展使用安装时配置的服务端口。
 
