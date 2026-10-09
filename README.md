@@ -30,6 +30,24 @@ index.html ── 同源单页看板（lightweight-charts 内联，无外部运�
 
 ## 安装
 
+### macOS（轻量运行）
+
+无需 Electron 或额外桌面框架；使用 macOS 自带的 `launchd` 启动本机服务，再用默认浏览器打开看板。需要 Python 3.9+；不需要管理员权限。
+
+```bash
+git clone https://github.com/longyunBegin/market-glance.git
+cd market-glance
+bash macos/install.sh
+```
+
+安装脚本将应用复制到 `~/Library/Application Support/Market Glance`，创建两个当前用户的 LaunchAgent（网页服务常驻；抓取任务每分钟唤醒，并遵守配置的抓取间隔），然后打开本机看板。现有本地配置会保留；首次安装时使用仓库内的 `config.json`（若有），否则采用示例配置。设置、行情缓存和日志都保存在上述目录。运行 `bash macos/uninstall.sh` 可停止并移除自动启动项；为避免误删数据，本地设置、缓存和日志会保留。
+
+**Chrome 工具栏快看（最小版）**：安装后在 Chrome 打开 `chrome://extensions`，启用“开发者模式”，点击“加载已解压的扩展程序”，选择 `~/Library/Application Support/Market Glance/app/chrome-extension`。之后点击工具栏中的 Market Glance 图标即可查看本机观察池行情；弹窗只读取本机行情快照，不接触钥匙串密钥。扩展使用安装时配置的服务端口。
+
+Alpaca IEX 密钥不写入配置或仓库。若要启用，请在 macOS“钥匙串访问”中将两个值分别保存为登录钥匙串的通用密码，账户填 macOS 短用户名，服务名分别为 `Market Glance Alpaca Key ID` 和 `Market Glance Alpaca Secret Key`；服务运行时从钥匙串读取。没有密钥时，使用 Yahoo Finance 的代码仍可用；自动路由至 Alpaca IEX 的普通美股代码需要密钥。
+
+### Linux（systemd）
+
 需要 Linux、Python 3.9+ 和 systemd，无第三方 Python 依赖。建议将仓库放在不含空格的目录中；安装脚本会从当前仓库目录生成 systemd 单元，不依赖某个固定用户或路径。
 
 ```bash
@@ -150,7 +168,7 @@ python3 fetch.py --force
 python3 -m unittest discover -s tests -v
 ```
 
-测试覆盖配置边界、抓取间隔门控、K 线缓存 TTL、安装路径生成、前端安全渲染、市场假日/时段计算，以及周末、假日和盘前盘后的收盘涨跌幅口径。
+测试覆盖配置边界、抓取间隔门控、K 线缓存 TTL、Linux 安装路径生成、macOS LaunchAgent 与 Chrome 扩展配置、前端安全渲染、市场假日/时段计算，以及周末、假日和盘前盘后的收盘涨跌幅口径。
 
 ## 目录结构
 
@@ -166,6 +184,8 @@ market-glance/
 ├── assets/             内联图表库
 ├── data/               运行时行情数据（Git 忽略）
 ├── systemd/            unit 模板与安装脚本
+├── macos/              launchd 安装、卸载与钥匙串启动脚本
+├── chrome-extension/   Mac Chrome 工具栏行情弹窗
 ├── tests/              回归测试
 ├── healthcheck.sh      本机网页健康检查
 └── tunnel.sh           可选 SSH 隧道

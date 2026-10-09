@@ -1,0 +1,91 @@
+* { box-sizing: border-box; }
+
+:root {
+  color-scheme: dark;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #11151c;
+  color: #e8edf5;
+}
+
+body {
+  width: 340px;
+  margin: 0;
+  padding: 16px;
+}
+
+.topbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 13px;
+  border-bottom: 1px solid #29313d;
+}
+
+h1 { margin: 0; font-size: 15px; font-weight: 650; letter-spacing: .01em; }
+.muted { margin: 5px 0 0; color: #8994a4; font-size: 11px; }
+
+.refresh {
+  width: 30px;
+  height: 30px;
+  border: 1px solid #35404e;
+  border-radius: 8px;
+  background: #1a202a;
+  color: #dce5f1;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+.refresh:hover { background: #242d39; }
+.refresh:disabled { opacity: .55; cursor: default; }
+
+.quotes {
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+  max-height: 390px;
+  overflow-y: auto;
+}
+
+.quote {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 49px;
+  border-bottom: 1px solid #202732;
+}
+.quote:last-child { border-bottom: 0; }
+.identity { min-width: 0; }
+.symbol { font-size: 13px; font-weight: 650; }
+.name {
+  display: block;
+  overflow: hidden;
+  margin-top: 3px;
+  color: #8994a4;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.values { text-align: right; font-variant-numeric: tabular-nums; }
+.price { font-size: 12px; font-weight: 600; }
+.change { margin-top: 3px; font-size: 10px; }
+.up { color: #35c58a; }
+.down { color: #f06f79; }
+.flat { color: #a6afbc; }
+.stale::after { content: " · 旧"; color: #e5b65c; font-size: 9px; font-weight: 400; }
+
+.message {
+  margin: 20px 0;
+  color: #a7b1c0;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+footer {
+  padding-top: 12px;
+  border-top: 1px solid #29313d;
+  text-align: center;
+}
+footer a { color: #91b9ff; font-size: 11px; text-decoration: none; }
+footer a:hover { text-decoration: underline; }

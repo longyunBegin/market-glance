@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Market Glance</title>
+  <link rel="stylesheet" href="popup.css">
+  <script src="popup.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>Market Glance</h1>
+      <p id="updated" class="muted" aria-live="polite">正在连接…</p>
+    </div>
+    <button id="refresh" class="refresh" type="button" aria-label="刷新行情" title="刷新">↻</button>
+  </header>
+  <main>
+    <ul id="quotes" class="quotes" aria-label="观察池"></ul>
+    <p id="message" class="message" hidden></p>
+  </main>
+  <footer>
+    <a href="http://127.0.0.1:8090/" id="dashboard" target="_blank" rel="noreferrer">打开完整看板 <span aria-hidden="true">↗</span></a>
+  </footer>
+</body>
+</html>

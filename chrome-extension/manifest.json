@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "Market Glance",
+  "version": "0.1.0",
+  "description": "从本机 Market Glance 服务快速查看观察池行情。",
+  "action": {
+    "default_title": "Market Glance",
+    "default_popup": "popup.html"
+  },
+  "host_permissions": [
+    "http://127.0.0.1/*"
+  ]
+}
