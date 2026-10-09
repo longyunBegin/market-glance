@@ -143,6 +143,7 @@ class FrontendGuardTests(unittest.TestCase):
         self.assertIn("APCA_API_KEY_ID / APCA_API_SECRET_KEY", self.html)
         self.assertIn("不是全市场 SIP 汇总", self.html)
         self.assertIn("数据源变更：", self.html)
+        self.assertNotIn("Twelve Data", self.html)
 
     def test_desktop_panel_controls_and_theme_preferences_are_persistent(self):
         self.assertIn('data-layout-toggle="overview"', self.html)

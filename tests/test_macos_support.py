@@ -33,6 +33,7 @@ class MacOSSupportTests(unittest.TestCase):
                          if line.startswith("for file in "))
         copied_files = shlex.split(copy_line.removeprefix("for file in ").removesuffix("; do"))
         self.assertIn("index.html", copied_files)
+        self.assertIn("twelvedata_internal.py", copied_files)
 
     def test_installer_generates_valid_web_and_fetch_launch_agents(self):
         installer = (MACOS_DIR / "install.sh").read_text(encoding="utf-8")

@@ -22,6 +22,8 @@ index.html ── 同源单页看板（lightweight-charts 内联，无外部运�
 macOS WidgetKit ── 只读 127.0.0.1:<配置端口>/data/quotes.json
 ```
 
+Twelve Data Basic 通过独立的 `twelvedata_internal.py` 手动采集，结果存入网页服务根目录之外的私有状态目录；它不会参与上述展示数据路径。
+
 - **K 线**：提供日K和当日走势（5 分钟粒度）；当日走势只显示最近一个有数据的交易日，周末、休市时显示上一交易日并标注日期。Yahoo 分钟线请求包含盘前盘后数据；图表会统计并标出当天实际收到的盘前 K 线。换标或切换周期时先清除旧图；新代码加载失败不会残留上一只股票的 K 线。过期请求不会覆盖后来选中的标的。
 - **市场状态**：按纽约当地时间识别周末、NYSE 常规假日、盘前/盘中/盘后和常见提前收市日，每 30 秒更新一次并显示纽约时间；倒计时指向下一个真实时段。市场状态与行情快照的最后更新时间分开展示。特殊临时休市不在年度规则表内。
 - **涨跌幅口径**：盘中按实时成交价相对最近常规收盘价计算；盘前、盘后及休市时按最近完整交易日收盘价对前一交易日收盘价计算。扩展时段价格及其相对常规收盘的变化会单独标注。
@@ -29,6 +31,7 @@ macOS WidgetKit ── 只读 127.0.0.1:<配置端口>/data/quotes.json
 - **安全渲染**：可编辑分组名和显示名通过 DOM 文本/表单属性渲染，不拼接到 HTML。
 - **失败回退**：抓取失败时保留最后成功行情并标记旧数据。
 - **数据源**：每只代码可选择自动、Alpaca IEX 或 Yahoo Finance。自动模式将普通美股代码路由到 Alpaca IEX，将指数和带市场后缀的代码路由到 Yahoo Finance；手动来源对该代码的报价、前收、涨跌与 K 线统一生效，失败时不会跨源回退。Alpaca IEX 只含 IEX 单一交易所的成交，并非 SIP 全市场汇总。
+- **Twelve Data（Basic）**：仅能用于内部非展示数据采集，不会出现在看板来源选项、`/api/klines`、报价快照、网页、小组件或 Chrome 扩展中。Basic 不含内部展示许可；把数据放进网站、App、小组件或公开看板都属于展示用途，不能通过本集成实现。需要展示权时应先取得相应计划/许可。
 
 ## 安装
 
@@ -180,6 +183,7 @@ python3 -m unittest discover -s tests -v
 market-glance/
 ├── index.html          单页看板
 ├── fetch.py            行情抓取及间隔门控
+├── twelvedata_internal.py Twelve Data 私有内部非展示采集器
 ├── alpaca_data.py     Alpaca IEX 行情 API 适配器
 ├── server.py           静态页面和 JSON API
 ├── config_model.py     配置默认值与校验
@@ -195,6 +199,29 @@ market-glance/
 ├── healthcheck.sh      本机网页健康检查
 └── tunnel.sh           可选 SSH 隧道
 ```
+
+### Twelve Data（Basic 仅内部非展示）
+
+Twelve Data 是一个独立的内部采集入口，不是看板行情源。官方将 Basic 列为 **8 API credits/分钟、800/天**，`/time_series` 每个代码消耗 1 credit；日额度按 **UTC 午夜**重置。采集器逐代码请求，并在本机用私有账本限制为最多 8 次/滚动分钟、800 次/UTC 日；失败请求也计入本地额度，避免重试意外耗量。若同一 API key 还被其他程序使用，本机账本无法计入那些外部请求，可能仍会遇到官方 429 限流。
+
+密钥不会写进 `config.json` 或仓库。可放入当前操作系统用户的私有配置文件：
+
+```bash
+mkdir -p ~/.config/market-glance
+chmod 700 ~/.config/market-glance
+nano ~/.config/market-glance/twelvedata.env
+chmod 600 ~/.config/market-glance/twelvedata.env
+```
+
+文件内容为 `TWELVE_DATA_API_KEY=你的 Twelve Data API key`。也可通过进程环境变量 `TWELVE_DATA_API_KEY` 提供；环境变量优先于配置文件。运行时使用一条请求/代码，例如：
+
+```bash
+python3 twelvedata_internal.py --symbols AAPL,MSFT --interval 1day --outputsize 30
+```
+
+macOS 安装版的采集脚本位于 `~/Library/Application Support/Market Glance/app/twelvedata_internal.py`。默认输出保存在 `${XDG_STATE_HOME:-~/.local/state}/market-glance/twelvedata/series.json`，目录权限为 `700`、文件权限为 `600`，且强制位于网页服务根目录之外；这份私有缓存不会经本机网页静态服务暴露。采集器不会自动运行；仅在你明确执行命令时消耗 Twelve Data 配额。
+
+Basic 实时美股 feed 覆盖 NYSE、Nasdaq 等上市标的，但官方说明它约占美国总成交量的 **5%**，不是 SIP 全市场汇总；它也不能替代当前看板所选的 Alpaca IEX/Yahoo 报价源。详见 [Basic 定价与许可](https://twelvedata.com/pricing)、[个人/内部用途说明](https://support.twelvedata.com/en/articles/5332349-commercial-and-personal-usage)、[API credits 规则](https://support.twelvedata.com/en/articles/5615854-credits)、[`time_series` 文档](https://twelvedata.com/docs#time-series) 和 [美国股票 feed 说明](https://support.twelvedata.com/en/articles/9935903-us-equities-market-data)。
 
 ## License
 

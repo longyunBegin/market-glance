@@ -33,7 +33,7 @@ chmod 700 "$SUPPORT_DIR" "$LOG_DIR"
 launchctl bootout "$DOMAIN" "$WEB_PLIST" 2>/dev/null || true
 launchctl bootout "$DOMAIN" "$FETCH_PLIST" 2>/dev/null || true
 
-for file in server.py fetch.py alpaca_data.py config_model.py market_calendar.py config.example.json index.html; do
+for file in server.py fetch.py alpaca_data.py config_model.py market_calendar.py twelvedata_internal.py config.example.json index.html; do
   cp -f "$SRC/$file" "$APP_DIR/$file"
 done
 rm -rf "$APP_DIR/assets"
