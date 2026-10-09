@@ -3,6 +3,7 @@ import json
 import tempfile
 import unittest
 from datetime import datetime, timezone
+from urllib.error import HTTPError
 from unittest.mock import patch
 
 import alpaca_data
@@ -37,6 +38,29 @@ class KlineCacheTests(unittest.TestCase):
         alpaca = fetch.kline_cache_path("/tmp/klines", "AAPL", "5m", "alpaca_iex")
         self.assertEqual(yahoo, "/tmp/klines/AAPL.json")
         self.assertEqual(alpaca, "/tmp/klines/alpaca_iex/AAPL.json")
+
+
+class YahooRateLimitTests(unittest.TestCase):
+    def test_429_persists_cooldown_and_suppresses_followup_network_requests(self):
+        url = "https://query1.finance.yahoo.com/v8/finance/chart/SIVE.ST"
+        with tempfile.TemporaryDirectory() as directory:
+            error = HTTPError(url, 429, "Too Many Requests", None, None)
+            with patch.object(fetch, "BASE", directory), \
+                    patch("fetch.time.time", return_value=1000), \
+                    patch("fetch.urllib.request.urlopen", side_effect=error) as request:
+                with self.assertRaises(fetch.YahooRateLimitError) as first:
+                    fetch.get(url)
+                with self.assertRaises(fetch.YahooRateLimitError) as second:
+                    fetch.get(url)
+
+            self.assertIn("HTTP 429", str(first.exception))
+            self.assertIn("暂停", str(second.exception))
+            request.assert_called_once()
+            state_path = os.path.join(directory, "data", ".yahoo-rate-limit.json")
+            with open(state_path, encoding="utf-8") as stream:
+                state = json.load(stream)
+            self.assertEqual(state["consecutive_429"], 1)
+            self.assertEqual(state["cooldown_until"], 1060)
 
 
 class StaleQuoteTests(unittest.TestCase):

@@ -134,6 +134,15 @@ class ServerApiTests(unittest.TestCase):
         self.assertFalse(payload["cached"])
         self.assertEqual(payload["candles"], candles)
 
+    def test_klines_429_failure_does_not_retry_without_cached_bars(self):
+        with tempfile.TemporaryDirectory() as data_dir:
+            with patch.object(server, "KL_DIR", data_dir), \
+                    patch.object(server, "fetch_candles", side_effect=RuntimeError("Yahoo Finance 触发 HTTP 429")) as fetch:
+                with self.assertRaises(HTTPError) as response:
+                    urlopen(self.base_url + "/api/klines?symbol=SIVE.ST&tf=5m&refresh=1")
+        self.assertEqual(response.exception.code, 502)
+        fetch.assert_called_once_with("SIVE.ST", "5m", "2d", provider="yahoo")
+
 
 if __name__ == "__main__":
     unittest.main()

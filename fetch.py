@@ -8,7 +8,9 @@ import tempfile
 import time
 import urllib.parse
 import urllib.request
+from email.utils import parsedate_to_datetime
 from datetime import datetime, time as clock_time, timedelta, timezone
+from urllib.error import HTTPError
 
 from alpaca_data import fetch_bars as fetch_alpaca_bars, fetch_latest_trades
 from config_model import load_config, provider_for_symbol
@@ -22,12 +24,106 @@ except Exception:  # pragma: no cover - supported Python versions include zonein
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 UA = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
+YAHOO_MIN_INTERVAL_SECS = 5.0
+YAHOO_COOLDOWN_BASE_SECS = 60
+YAHOO_COOLDOWN_MAX_SECS = 1800
+
+
+class YahooRateLimitError(RuntimeError):
+    """Yahoo returned 429 or a shared cooldown is still active."""
+
+
+def _yahoo_state_path():
+    return os.path.join(BASE, "data", ".yahoo-rate-limit.json")
+
+
+def _read_yahoo_state(stream):
+    stream.seek(0)
+    try:
+        value = json.load(stream)
+    except (json.JSONDecodeError, OSError):
+        value = {}
+    if not isinstance(value, dict):
+        value = {}
+    try:
+        return {
+            "last_request_at": float(value.get("last_request_at", 0) or 0),
+            "cooldown_until": float(value.get("cooldown_until", 0) or 0),
+            "consecutive_429": int(value.get("consecutive_429", 0) or 0),
+        }
+    except (TypeError, ValueError, OverflowError):
+        return {"last_request_at": 0, "cooldown_until": 0, "consecutive_429": 0}
+
+
+def _write_yahoo_state(stream, value):
+    stream.seek(0)
+    stream.truncate(0)
+    json.dump(value, stream)
+    stream.flush()
+    os.fsync(stream.fileno())
+
+
+def _retry_after_seconds(error, now):
+    headers = error.headers
+    raw = headers.get("Retry-After") if headers else None
+    if not raw:
+        return None
+    try:
+        return max(0.0, float(raw))
+    except (TypeError, ValueError):
+        try:
+            return max(0.0, parsedate_to_datetime(raw).timestamp() - now)
+        except (TypeError, ValueError, OverflowError):
+            return None
+
+
+def _cooldown_error(retry_at, now):
+    remaining = max(1, int(retry_at - now + 0.999))
+    return YahooRateLimitError(
+        "Yahoo Finance 触发 HTTP 429；本机已暂停 Yahoo 请求，约 %d 秒后再试。" % remaining
+    )
 
 
 def get(url):
-    request = urllib.request.Request(url, headers=UA)
-    with urllib.request.urlopen(request, timeout=20) as response:
-        return json.load(response)
+    """Fetch Yahoo JSON with one shared cross-process throttle and 429 cooldown."""
+    state_path = _yahoo_state_path()
+    os.makedirs(os.path.dirname(state_path), exist_ok=True)
+    with open(state_path, "a+", encoding="utf-8") as state_file:
+        fcntl.flock(state_file.fileno(), fcntl.LOCK_EX)
+        state = _read_yahoo_state(state_file)
+        now = time.time()
+        if state["cooldown_until"] > now:
+            raise _cooldown_error(state["cooldown_until"], now)
+
+        wait = state["last_request_at"] + YAHOO_MIN_INTERVAL_SECS - now
+        if wait > 0:
+            time.sleep(wait)
+        now = time.time()
+        state["last_request_at"] = now
+        _write_yahoo_state(state_file, state)
+
+        request = urllib.request.Request(url, headers=UA)
+        try:
+            with urllib.request.urlopen(request, timeout=20) as response:
+                payload = json.load(response)
+        except HTTPError as exc:
+            if exc.code == 429:
+                state["consecutive_429"] += 1
+                default_delay = min(
+                    YAHOO_COOLDOWN_MAX_SECS,
+                    YAHOO_COOLDOWN_BASE_SECS * (2 ** (state["consecutive_429"] - 1)),
+                )
+                retry_after = _retry_after_seconds(exc, time.time())
+                delay = max(default_delay, retry_after or 0)
+                state["cooldown_until"] = time.time() + delay
+                _write_yahoo_state(state_file, state)
+                raise _cooldown_error(state["cooldown_until"], time.time()) from exc
+            raise
+
+        state["consecutive_429"] = 0
+        state["cooldown_until"] = 0
+        _write_yahoo_state(state_file, state)
+        return payload
 
 
 def kline_filename(symbol):
@@ -189,8 +285,6 @@ def fetch_one(symbol, name, group, provider="yahoo", latest_trade=None,
     # cannot cover. Intraday regular-session bars are a fallback if daily fetch fails.
     daily_candles = []
     try:
-        if provider == "yahoo":
-            time.sleep(5.0)
         daily_candles, _ = fetch_candles(symbol, "1d", "1mo", provider=provider)
     except Exception:  # noqa: BLE001 - preserve quotes when the daily endpoint fails
         pass
@@ -354,20 +448,14 @@ def main(argv=None):
                 provider = ticker_providers[symbol]
                 error = None
                 quote = None
-                for attempt in (1, 2):
-                    try:
-                        quote, candles = fetch_one(
-                            symbol, name, group_name, provider=provider,
-                            latest_trade=latest_trades.get(symbol),
-                            trades_loaded=(provider == "alpaca_iex"),
-                        )
-                        break
-                    except Exception as exc:  # noqa: BLE001
-                        error = str(exc)[:120]
-                        if "429" in error and attempt == 1:
-                            time.sleep(30)
-                        else:
-                            break
+                try:
+                    quote, candles = fetch_one(
+                        symbol, name, group_name, provider=provider,
+                        latest_trade=latest_trades.get(symbol),
+                        trades_loaded=(provider == "alpaca_iex"),
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    error = str(exc)[:120]
                 if quote is not None:
                     quote["stale"] = False
                     quote["last_success_at"] = int(now)
@@ -381,9 +469,6 @@ def main(argv=None):
                     quotes.append(_stale_quote(
                         old, symbol, name, group_name, provider, now, error,
                     ))
-                if provider == "yahoo":
-                    time.sleep(5.0)
-
         _atomic_json(quotes_path, {"updated": int(time.time()),
                                    "anomaly_threshold_pct": config["anomaly_threshold_pct"],
                                    "provider_mode": "symbol_route",

@@ -153,23 +153,20 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     pass
 
             error = None
-            for attempt in (1, 2):
-                try:
-                    candles, _meta = fetch_candles(
-                        symbol, interval, yahoo_range, provider=provider)
-                    if not candles:
-                        raise ValueError("行情数据源返回空 K 线")
-                    _atomic_json(path, {"symbol": symbol, "tf": timeframe,
-                                        "provider": provider, "candles": candles})
-                    self._json({"ok": True, "symbol": symbol, "tf": timeframe,
-                                "candles": candles, "cached": False,
-                                "stale": False, "updated_at": int(time.time()),
-                                "max_age": ttl, "provider": provider})
-                    return
-                except Exception as exc:  # noqa: BLE001
-                    error = str(exc)[:120]
-                    if "429" in error and attempt == 1:
-                        time.sleep(10)
+            try:
+                candles, _meta = fetch_candles(
+                    symbol, interval, yahoo_range, provider=provider)
+                if not candles:
+                    raise ValueError("行情数据源返回空 K 线")
+                _atomic_json(path, {"symbol": symbol, "tf": timeframe,
+                                    "provider": provider, "candles": candles})
+                self._json({"ok": True, "symbol": symbol, "tf": timeframe,
+                            "candles": candles, "cached": False,
+                            "stale": False, "updated_at": int(time.time()),
+                            "max_age": ttl, "provider": provider})
+                return
+            except Exception as exc:  # noqa: BLE001
+                error = str(exc)[:120]
 
             try:
                 self._json(cached_response(stale=True, max_age=30))
