@@ -20,14 +20,14 @@ KL_DIR = os.path.join(DATA, "klines")
 
 sys.path.insert(0, BASE)
 from config_model import load_config, validate_config  # noqa: E402
-from fetch import fetch_candles, kline_filename  # noqa: E402
+from fetch import fetch_candles, kline_cache_path  # noqa: E402
 from market_calendar import market_status  # noqa: E402
 
 SYM_RE = re.compile(r"^[A-Z0-9^.=\-]{1,12}$")
 TF_MAP = {
-    "5m": ("5m", "2d", "", None),
-    "15m": ("15m", "1mo", "_15m", 900),
-    "1d": ("1d", "1y", "_1d", 3600),
+    "5m": ("5m", "2d", None),
+    "15m": ("15m", "1mo", 900),
+    "1d": ("1d", "1y", 3600),
 }
 _KLINE_LOCKS = {}
 _KLINE_LOCKS_GUARD = threading.Lock()
@@ -111,8 +111,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self._json({"ok": False, "error": "周期只支持 5m / 15m / 1d"}, 400)
             return
 
-        interval, yahoo_range, suffix, ttl = TF_MAP[timeframe]
-        path = os.path.join(KL_DIR, kline_filename(symbol)[:-5] + suffix + ".json")
+        config = load_config(CONFIG)
+        provider = config["market_data_provider"]
+        interval, yahoo_range, ttl = TF_MAP[timeframe]
+        path = kline_cache_path(KL_DIR, symbol, timeframe, provider)
 
         def cached_response(stale=False, max_age=0):
             with open(path, encoding="utf-8") as stream:
@@ -121,11 +123,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return {"ok": True, "symbol": symbol, "tf": timeframe,
                     "candles": payload["candles"], "cached": True,
                     "stale": bool(stale), "updated_at": updated,
-                    "max_age": max(1, int(max_age))}
+                    "max_age": max(1, int(max_age)), "provider": provider}
 
         if ttl is None:
             try:
-                config = load_config(CONFIG)
                 stale_after = max(120, config["fetch_interval_secs"] * 2)
                 age = max(0, time.time() - os.path.getmtime(path))
                 self._json(cached_response(stale=age > stale_after, max_age=30))
@@ -135,7 +136,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self._json({"ok": False, "error": "读取 K 线缓存失败：%s" % str(exc)[:100]}, 500)
             return
 
-        key = symbol + "_" + timeframe
+        key = provider + "_" + symbol + "_" + timeframe
         with _kline_lock(key):
             if not force and cache_is_fresh(path, ttl):
                 try:
@@ -148,14 +149,16 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             error = None
             for attempt in (1, 2):
                 try:
-                    candles, _meta = fetch_candles(symbol, interval, yahoo_range)
+                    candles, _meta = fetch_candles(
+                        symbol, interval, yahoo_range, provider=provider)
                     if not candles:
-                        raise ValueError("Yahoo 返回空数据")
-                    _atomic_json(path, {"symbol": symbol, "tf": timeframe, "candles": candles})
+                        raise ValueError("行情数据源返回空 K 线")
+                    _atomic_json(path, {"symbol": symbol, "tf": timeframe,
+                                        "provider": provider, "candles": candles})
                     self._json({"ok": True, "symbol": symbol, "tf": timeframe,
                                 "candles": candles, "cached": False,
                                 "stale": False, "updated_at": int(time.time()),
-                                "max_age": ttl})
+                                "max_age": ttl, "provider": provider})
                     return
                 except Exception as exc:  # noqa: BLE001
                     error = str(exc)[:120]
@@ -190,6 +193,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return
 
         groups_changed = normalized["groups"] != current["groups"]
+        provider_changed = normalized["market_data_provider"] != current["market_data_provider"]
         try:
             if os.path.exists(CONFIG):
                 shutil.copy2(CONFIG, CONFIG + ".bak")
@@ -198,7 +202,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self._json({"ok": False, "error": "写入配置失败：%s" % str(exc)[:120]}, 500)
             return
 
-        if groups_changed:
+        if groups_changed or provider_changed:
             try:
                 subprocess.Popen([sys.executable, FETCH, "--force"],
                                  stdout=subprocess.DEVNULL,
@@ -209,7 +213,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self._json({"ok": True,
                     "tickers": sum(len(group["tickers"]) for group in normalized["groups"]),
                     "fetch_interval_secs": normalized["fetch_interval_secs"],
-                    "groups_changed": groups_changed})
+                    "groups_changed": groups_changed,
+                    "provider_changed": provider_changed})
 
 
 def main():

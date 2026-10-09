@@ -84,6 +84,14 @@ class FrontendGuardTests(unittest.TestCase):
         self.assertIn("waitForUpdatedQuotes(pendingConfig", self.html)
         self.assertNotIn("element.querySelector('textarea')", self.html)
 
+    def test_alpaca_iex_provider_is_selectable_and_discloses_coverage(self):
+        self.assertIn('id="cfgProvider"', self.html)
+        self.assertIn('<option value="alpaca_iex">Alpaca IEX</option>', self.html)
+        self.assertIn("APCA_API_KEY_ID / APCA_API_SECRET_KEY", self.html)
+        self.assertIn("仅 IEX 交易所美股数据", self.html)
+        self.assertIn("market_data_provider:$('cfgProvider').value", self.html)
+        self.assertIn("if(result.provider_changed)", self.html)
+
     def test_desktop_panel_controls_and_theme_preferences_are_persistent(self):
         self.assertIn('data-layout-toggle="overview"', self.html)
         self.assertIn('data-layout-toggle="anomalies"', self.html)

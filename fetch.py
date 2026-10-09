@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fetch Yahoo Finance quotes and write atomic JSON snapshots."""
+"""Fetch market quotes from Yahoo Finance or Alpaca IEX and write JSON snapshots."""
 import argparse
 import fcntl
 import json
@@ -10,6 +10,7 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
 
+from alpaca_data import fetch_bars as fetch_alpaca_bars, fetch_latest_trades
 from config_model import load_config
 
 try:
@@ -32,8 +33,39 @@ def kline_filename(symbol):
     return symbol.replace("^", "_").replace(".", "_") + ".json"
 
 
-def fetch_candles(symbol, interval, period):
-    """Return candles [[ts, o, h, l, c, v], ...] and Yahoo metadata."""
+def kline_cache_path(directory, symbol, timeframe, provider="yahoo"):
+    """Keep each provider's cached candles separate; preserve old Yahoo paths."""
+    suffix = {"5m": "", "15m": "_15m", "1d": "_1d"}[timeframe]
+    filename = kline_filename(symbol)[:-5] + suffix + ".json"
+    cache_dir = directory if provider == "yahoo" else os.path.join(directory, provider)
+    return os.path.join(cache_dir, filename)
+
+
+def fetch_candles(symbol, interval, period, provider="yahoo"):
+    """Return candles [[ts, o, h, l, c, v], ...] and source metadata."""
+    if provider == "alpaca_iex":
+        timeframe = {"5m": "5Min", "15m": "15Min", "1d": "1Day"}.get(interval)
+        days = {"2d": 5, "1mo": 35, "1y": 370}.get(period)
+        if timeframe is None or days is None:
+            raise ValueError("Alpaca IEX 不支持此 K 线周期")
+        end = datetime.now(timezone.utc)
+        start = end - timedelta(days=days)
+        bars = fetch_alpaca_bars(
+            symbol, timeframe,
+            start.isoformat(timespec="seconds").replace("+00:00", "Z"),
+            end.isoformat(timespec="seconds").replace("+00:00", "Z"),
+        )
+        candles = []
+        for bar in bars:
+            timestamp = datetime.fromisoformat(bar["t"].replace("Z", "+00:00"))
+            candles.append([
+                int(timestamp.timestamp()), float(bar["o"]), float(bar["h"]),
+                float(bar["l"]), float(bar["c"]), int(bar.get("v") or 0),
+            ])
+        candles.sort(key=lambda candle: candle[0])
+        return candles, {"provider": provider}
+    if provider != "yahoo":
+        raise ValueError("未知行情数据源：%s" % provider)
     encoded = urllib.parse.quote(symbol, safe="")
     url = ("https://query1.finance.yahoo.com/v8/finance/chart/%s"
            "?interval=%s&range=%s&includePrePost=true" % (encoded, interval, period))
@@ -57,9 +89,12 @@ def fetch_candles(symbol, interval, period):
     return candles, metadata
 
 
-def fetch_one(symbol, name, group):
+def fetch_one(symbol, name, group, provider="yahoo", latest_trade=None,
+              trades_loaded=False):
     """Fetch one symbol and return (quote, candles)."""
-    candles, metadata = fetch_candles(symbol, "5m", "2d")
+    candles, metadata = fetch_candles(symbol, "5m", "2d", provider=provider)
+    if provider == "alpaca_iex" and not trades_loaded:
+        latest_trade = fetch_latest_trades([symbol]).get(symbol)
     timestamps = [candle[0] for candle in candles]
     midnight_et = datetime.now(ET).replace(hour=0, minute=0, second=0, microsecond=0)
     yesterday_close_ts = int(midnight_et.timestamp()) - 8 * 3600
@@ -78,12 +113,18 @@ def fetch_one(symbol, name, group):
     if previous is None:
         previous = metadata.get("chartPreviousClose") or metadata.get("previousClose")
     last = closes[-1] if closes else None
+    if provider == "alpaca_iex" and isinstance(latest_trade, dict):
+        trade_price = latest_trade.get("p")
+        if isinstance(trade_price, (int, float)) and trade_price > 0:
+            last = float(trade_price)
+    if last is None:
+        raise ValueError("行情源没有可用成交或 K 线数据")
     change = (last / previous - 1) * 100 if last and previous else None
     return {
         "symbol": symbol, "name": name, "group": group,
         "price": round(last, 2) if last is not None else None,
         "chg_pct": round(change, 2) if change is not None else None,
-        "prev_close": previous,
+        "prev_close": previous, "provider": provider,
     }, candles
 
 
@@ -156,6 +197,15 @@ def main(argv=None):
                 pass
 
         quotes = []
+        provider = config["market_data_provider"]
+        ticker_symbols = [ticker["symbol"] for group in config["groups"]
+                          for ticker in group["tickers"]]
+        latest_trades = {}
+        if provider == "alpaca_iex":
+            try:
+                latest_trades = fetch_latest_trades(ticker_symbols)
+            except Exception as exc:  # noqa: BLE001
+                print("warn: Alpaca IEX latest trades unavailable: %s" % str(exc)[:160])
         for group in config["groups"]:
             for ticker in group["tickers"]:
                 symbol = ticker["symbol"]
@@ -164,7 +214,11 @@ def main(argv=None):
                 quote = None
                 for attempt in (1, 2):
                     try:
-                        quote, candles = fetch_one(symbol, name, group_name)
+                        quote, candles = fetch_one(
+                            symbol, name, group_name, provider=provider,
+                            latest_trade=latest_trades.get(symbol),
+                            trades_loaded=(provider == "alpaca_iex"),
+                        )
                         break
                     except Exception as exc:  # noqa: BLE001
                         error = str(exc)[:120]
@@ -177,8 +231,9 @@ def main(argv=None):
                     quote["last_success_at"] = int(now)
                     quote.pop("stale_since", None)
                     quotes.append(quote)
-                    _atomic_json(os.path.join(klines_dir, kline_filename(symbol)),
-                                 {"symbol": symbol, "candles": candles})
+                    _atomic_json(kline_cache_path(klines_dir, symbol, "5m", provider),
+                                 {"symbol": symbol, "tf": "5m", "provider": provider,
+                                  "candles": candles})
                 else:
                     old = previous_quotes.get(symbol)
                     if old and old.get("price") is not None:
@@ -190,10 +245,12 @@ def main(argv=None):
                     else:
                         quotes.append({"symbol": symbol, "name": name, "group": group_name,
                                        "price": None, "chg_pct": None, "error": error})
-                time.sleep(5.0)
+                if provider == "yahoo":
+                    time.sleep(5.0)
 
         _atomic_json(quotes_path, {"updated": int(time.time()),
                                    "anomaly_threshold_pct": config["anomaly_threshold_pct"],
+                                   "provider": provider,
                                    "quotes": quotes})
         successful = sum(1 for quote in quotes if quote["price"] is not None)
         print("ok: %d/%d tickers" % (successful, len(quotes)))

@@ -13,8 +13,17 @@ class ConfigValidationTests(unittest.TestCase):
         config = validate_config(BASE)
         self.assertEqual(config["fetch_interval_secs"], 300)
         self.assertEqual(config["anomaly_threshold_pct"], 3.0)
+        self.assertEqual(config["market_data_provider"], "yahoo")
         self.assertEqual(config["www_port"], 8090)
         self.assertEqual(config["groups"][0]["tickers"][0]["symbol"], "AAPL")
+
+    def test_market_data_provider_choices(self):
+        self.assertEqual(validate_config({**BASE, "market_data_provider": "alpaca_iex"})[
+            "market_data_provider"], "alpaca_iex")
+        for invalid in ("alpaca", "sip", None, 1):
+            with self.subTest(invalid=invalid):
+                with self.assertRaisesRegex(ValueError, "行情数据源"):
+                    validate_config({**BASE, "market_data_provider": invalid})
 
     def test_fetch_interval_range_and_type(self):
         for invalid in (59, 86401, 60.5, True, "300"):

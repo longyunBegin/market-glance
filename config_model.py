@@ -6,6 +6,7 @@ import re
 DEFAULT_CONFIG = {
     "anomaly_threshold_pct": 3.0,
     "fetch_interval_secs": 300,
+    "market_data_provider": "yahoo",
     "www_port": 8090,
 }
 SYMBOL_RE = re.compile(r"^[A-Z0-9^.\-=]{1,12}$")
@@ -62,7 +63,7 @@ def validate_config(payload):
         out.append({"name": group_name, "tickers": normalized_tickers})
 
     if total > MAX_TICKERS_TOTAL:
-        raise ValueError("代码总数太多（最多 %d 个），Yahoo 会限流" % MAX_TICKERS_TOTAL)
+        raise ValueError("代码总数太多（最多 %d 个），行情源可能限流" % MAX_TICKERS_TOTAL)
 
     threshold = payload.get("anomaly_threshold_pct", DEFAULT_CONFIG["anomaly_threshold_pct"])
     if isinstance(threshold, bool) or not isinstance(threshold, (int, float)):
@@ -75,6 +76,10 @@ def validate_config(payload):
     if isinstance(interval, bool) or not isinstance(interval, int) or not 60 <= interval <= 86400:
         raise ValueError("抓取间隔必须是 60 到 86400 秒之间的整数")
 
+    provider = payload.get("market_data_provider", DEFAULT_CONFIG["market_data_provider"])
+    if not isinstance(provider, str) or provider not in ("yahoo", "alpaca_iex"):
+        raise ValueError("行情数据源必须是 yahoo 或 alpaca_iex")
+
     port = payload.get("www_port", DEFAULT_CONFIG["www_port"])
     if isinstance(port, bool) or not isinstance(port, int) or not 1024 <= port <= 65535:
         raise ValueError("网页端口必须是 1024 到 65535 之间的整数")
@@ -82,6 +87,7 @@ def validate_config(payload):
     return {
         "anomaly_threshold_pct": threshold,
         "fetch_interval_secs": interval,
+        "market_data_provider": provider,
         "www_port": port,
         "groups": out,
     }

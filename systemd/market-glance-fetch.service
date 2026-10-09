@@ -1,5 +1,5 @@
 [Unit]
-Description=Market Glance fetcher (Yahoo Finance to JSON)
+Description=Market Glance market-data fetcher to JSON
 After=network-online.target
 Wants=network-online.target
 
@@ -8,6 +8,7 @@ Type=oneshot
 # The installer renders @APP_DIR@ from this checkout's actual location.
 Environment=no_proxy=localhost,127.0.0.1,::1,[::1],198.19.0.1,198.19.0.2
 Environment=NO_PROXY=localhost,127.0.0.1,::1,[::1],198.19.0.1,198.19.0.2
+EnvironmentFile=-/etc/default/market-glance-fetch
 ExecStart=/usr/bin/python3 @APP_DIR@/fetch.py
 StandardOutput=journal
 StandardError=journal

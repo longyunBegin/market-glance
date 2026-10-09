@@ -5,9 +5,9 @@
 ## 功能与架构
 
 ```text
-Yahoo Finance（非官方接口，约 1～3 分钟延迟）
+行情源（默认 Yahoo Finance；可选 Alpaca IEX）
     │
-fetch.py ── 读取 config.json 的抓取间隔 ──→ data/quotes.json + data/klines/*.json
+fetch.py ── 读取 config.json 的数据源与抓取间隔 ──→ data/quotes.json + data/klines/*.json
     │                                             ↑
     └── systemd timer 每分钟检查一次；未到配置间隔时不访问行情源
                                                   │
@@ -21,6 +21,7 @@ index.html ── 同源单页看板（lightweight-charts 内联，无外部运�
 - **主题与布局**：可在页面顶部选择浅色、深色或系统模式；主题和桌面面板显示偏好自动保存在当前浏览器。
 - **安全渲染**：可编辑分组名和显示名通过 DOM 文本/表单属性渲染，不拼接到 HTML。
 - **失败回退**：抓取失败时保留最后成功行情并标记旧数据。
+- **数据源**：默认使用 Yahoo Finance；可在设置中切换 Alpaca IEX，支持 IEX 最新成交及 5/15 分钟、日线 K 线。Alpaca IEX 只含 IEX 单一交易所的成交，并非 SIP 全市场汇总。
 
 ## 安装
 
@@ -68,12 +69,13 @@ TUNNEL_CMD="ssh -N -T -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o Exit
 
 ## 配置
 
-`config.json` 是每台机器自己的配置，已加入 Git 忽略规则；仓库只保存 `config.example.json`。页面右上角齿轮可逐项编辑分组、代码和显示名，并在保存前校验重复/无效代码、预览差异；异动阈值和抓取间隔也可在此调整。观察池保存后页面会持续显示更新状态，直到新行情快照实际到达。
+`config.json` 是每台机器自己的配置，已加入 Git 忽略规则；仓库只保存 `config.example.json`。页面右上角齿轮可逐项编辑分组、代码和显示名，并在保存前校验重复/无效代码、预览差异；异动阈值、抓取间隔和行情数据源也可在此调整。观察池保存后页面会持续显示更新状态，直到新行情快照实际到达。
 
 ```json
 {
   "anomaly_threshold_pct": 3.0,
   "fetch_interval_secs": 300,
+  "market_data_provider": "yahoo",
   "www_port": 8090,
   "groups": [
     {"name": "观察池", "tickers": [{"name": "显示名", "symbol": "AAPL"}]}
@@ -82,11 +84,36 @@ TUNNEL_CMD="ssh -N -T -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o Exit
 ```
 
 - `anomaly_threshold_pct`：异动区阈值，范围 `0.1`～`50`。
-- `fetch_interval_secs`：实际行情抓取间隔，范围 `60`～`86400` 秒；timer 每分钟唤醒一次，脚本依据该值决定是否访问 Yahoo。
+- `market_data_provider`：`yahoo`（默认）或 `alpaca_iex`。页面设置也可切换；更换数据源会触发后台抓取。
+- `fetch_interval_secs`：实际行情抓取间隔，范围 `60`～`86400` 秒；timer 每分钟唤醒一次，脚本依据该值决定是否访问行情源。
 - `www_port`：网页服务端口，范围 `1024`～`65535`。若手动修改端口，需重启网页服务：`sudo systemctl restart market-glance-www.service`。
-- `symbol` 使用 Yahoo Finance 代码，例如美股 `AAPL`、斯德哥尔摩 `SIVE.ST`、指数 `^NDX` / `^IXIC`、美债 `^TNX`、波动率 `^VIX`。
+- `symbol` 使用 Yahoo Finance 代码时可填美股、海外股票或指数；Alpaca IEX 仅适用于其支持的美国股票代码，非美股/指数可能没有数据。
 
-页面保存观察池后会立即触发一次抓取；只改阈值或抓取间隔不会额外访问行情源。也可手动强制抓取：
+使用 Alpaca IEX 前，先在服务器上创建仅 root 可读的凭据文件；不要把 API 密钥放进 `config.json` 或提交到 Git：
+
+```bash
+sudo install -m 600 /dev/null /etc/default/market-glance-fetch
+sudoedit /etc/default/market-glance-fetch
+```
+
+文件内容（填入 Alpaca API dashboard 的数据密钥）：
+
+```ini
+APCA_API_KEY_ID=your_key_id
+APCA_API_SECRET_KEY=your_secret_key
+```
+
+安装/更新 systemd 单元后，执行以下命令让网页服务和抓取服务重新读取凭据，然后在页面设置中选择 **Alpaca IEX**；也可以在 `config.json` 将 `market_data_provider` 设为 `alpaca_iex`：
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart market-glance-www.service
+sudo systemctl start market-glance-fetch.service
+```
+
+抓取器通过 Alpaca 官方股票行情 API 显式请求 `feed=iex`。更多说明见 [Alpaca Market Data FAQ](https://docs.alpaca.markets/us/docs/market-data-faq)、[最新成交 API](https://docs.alpaca.markets/us/reference/stocklatesttrades-1) 和 [历史 K 线 API](https://docs.alpaca.markets/us/reference/stockbars)。
+
+页面保存观察池后会立即触发一次抓取；只改阈值或抓取间隔不会额外访问行情源。也可手动强制抓取；使用 Alpaca 时请确保当前 shell 已设置 `APCA_API_KEY_ID` 和 `APCA_API_SECRET_KEY`，systemd 服务会从上面的凭据文件读取：
 
 ```bash
 python3 fetch.py --force
@@ -94,8 +121,9 @@ python3 fetch.py --force
 
 ## 数据说明
 
-- 涨跌幅相对上一个常规收盘价；Yahoo 的含盘前数据时 `chartPreviousClose` 不可靠，因此优先从 K 线计算前收。
+- 涨跌幅相对上一个常规收盘价；Yahoo 的含盘前数据时 `chartPreviousClose` 不可靠，因此优先从 K 线计算前收。Alpaca IEX 最新价格取最新 IEX 成交，K 线和前收也仅基于 IEX 数据。
 - Yahoo 对突发请求敏感；抓取脚本使用 5 秒 pacing，并在 429 时退避重试。
+- IEX 是单一交易所行情，成交量/报价可能少于 SIP 汇总；标普或纳指等指数符号不属于股票 IEX 行情。
 - 15 分钟 K 线缓存 15 分钟，日线缓存 1 小时；5 分钟 K 线由定时抓取任务更新，浏览器每 30 秒检查一次文件。
 - 图表库为 TradingView 开源 [lightweight-charts](https://github.com/tradingview/lightweight-charts) v4.2.0（Apache-2.0），已内联到 `assets/`。
 
@@ -108,7 +136,7 @@ python3 fetch.py --force
 | `market-glance-tunnel.service` | 可选 SSH 隧道，默认不启用 |
 | `market-glance-healthcheck.timer` | 每 10 分钟检查网页端口并在无响应时重启服务 |
 
-迁移或重建安装目录后，在新目录重新运行 `bash systemd/install.sh` 即可重新生成带有实际路径的 unit。代理环境变量由安装脚本注入 systemd manager 环境，不会写入仓库文件。
+迁移或重建安装目录后，在新目录重新运行 `bash systemd/install.sh` 即可重新生成带有实际路径的 unit。代理环境变量由安装脚本注入 systemd manager 环境，不会写入仓库文件。抓取服务会可选读取 `/etc/default/market-glance-fetch`；该文件由运维者以 `0600` 权限创建，避免密钥进入仓库。
 
 ## 测试
 
@@ -126,6 +154,7 @@ python3 -m unittest discover -s tests -v
 market-glance/
 ├── index.html          单页看板
 ├── fetch.py            行情抓取及间隔门控
+├── alpaca_data.py     Alpaca IEX 行情 API 适配器
 ├── server.py           静态页面和 JSON API
 ├── config_model.py     配置默认值与校验
 ├── market_calendar.py  美股常规假日与交易时段

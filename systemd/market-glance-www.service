@@ -8,6 +8,7 @@ Type=simple
 WorkingDirectory=@APP_DIR@
 Environment=no_proxy=localhost,127.0.0.1,::1,[::1],198.19.0.1,198.19.0.2
 Environment=NO_PROXY=localhost,127.0.0.1,::1,[::1],198.19.0.1,198.19.0.2
+EnvironmentFile=-/etc/default/market-glance-fetch
 ExecStart=/usr/bin/python3 @APP_DIR@/server.py
 Restart=always
 RestartSec=5

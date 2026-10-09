@@ -106,6 +106,7 @@
   .cfg-settings { display: flex; flex-wrap: wrap; gap: 10px 16px; margin-bottom: 12px; padding: 10px; background: #f7f8fa; border-radius: 7px; font-size: 12px; color: #666; }
   .cfg-settings label { display: flex; align-items: center; gap: 6px; }
   .cfg-settings input { width: 100px; padding: 5px 7px; border: 1px solid #ddd; border-radius: 5px; }
+  .cfg-settings select { max-width: 190px; padding: 5px 7px; border: 1px solid #ddd; border-radius: 5px; background: #fff; color: #333; }
   .cfg-grp { border: 1px solid #e6e8ec; border-radius: 8px; padding: 10px; margin-bottom: 10px; }
   .cfg-grp .grow { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
   .cfg-grp input.gname { flex: 1; min-width: 0; padding: 5px 8px; border: 1px solid #ddd; border-radius: 5px; font-size: 13px; }
@@ -150,6 +151,7 @@
   [data-theme="dark"] .row:hover, [data-theme="dark"] .gear:hover, [data-theme="dark"] .theme-toggle:hover { background: #171717; }
   [data-theme="dark"] .layout-controls button, [data-theme="dark"] .theme-toggle, [data-theme="dark"] .gear,
   [data-theme="dark"] .tfbtn, [data-theme="dark"] .btn { background: #0a0a0a; color: #dedede; border-color: #3a3a3a; }
+  [data-theme="dark"] .cfg-settings select { background: #080808; color: #ededed; border-color: #3a3a3a; }
   [data-theme="dark"] .layout-controls button[aria-pressed="true"], [data-theme="dark"] .tfbtn.on, [data-theme="dark"] .btn.primary { background: #252525; border-color: #555; color: #fff; }
   [data-theme="dark"] .cfg-settings, [data-theme="dark"] .cfg-preview { background: #080808; color: #c8c8c8; }
   [data-theme="dark"] .cfg-preview { border-color: #333; }
@@ -233,15 +235,17 @@
     <div id="chart" aria-live="polite" aria-busy="false"></div>
   </section>
 </main>
-<footer id="footer">数据：Yahoo Finance（非官方接口，延迟约 1～3 分钟）· 抓取间隔按配置执行 · 交易日按 NYSE 常规假日规则估算</footer>
+  <footer id="footer">数据源：Yahoo Finance（非官方接口，延迟约 1～3 分钟）· 抓取间隔按配置执行 · 交易日按 NYSE 常规假日规则估算</footer>
 <div class="modal-bg" id="cfgBg">
   <div class="modal">
     <h3>⚙️ 观察列表配置</h3>
     <div class="hint">逐项填写代码和显示名（显示名可省，默认用代码）。预览会检查重复代码和格式；观察池变更保存后会立即触发行情抓取。</div>
     <div class="cfg-settings">
+      <label>行情数据源 <select id="cfgProvider"><option value="yahoo">Yahoo Finance</option><option value="alpaca_iex">Alpaca IEX</option></select></label>
       <label>异动阈值 (%) <input id="cfgThreshold" type="number" min="0.1" max="50" step="0.1"></label>
       <label>抓取间隔 (秒) <input id="cfgInterval" type="number" min="60" max="86400" step="60"></label>
     </div>
+    <div class="hint">Alpaca IEX 仅提供 IEX 交易所的美股成交与 K 线，不是全市场 SIP 汇总；需在服务器安全配置 APCA_API_KEY_ID / APCA_API_SECRET_KEY。</div>
     <div id="cfgGroups"></div>
     <div class="mrow"><button class="btn" id="cfgAdd">＋ 添加分组</button></div>
     <div class="mrow">
@@ -525,6 +529,9 @@ async function refresh(){
       if(configResponse.ok){
         const config=await configResponse.json();
         if(Array.isArray(config.groups))configuredGroups=config.groups;
+        $('footer').textContent=config.market_data_provider==='alpaca_iex'
+          ?'数据源：Alpaca IEX（仅 IEX 交易所美股数据；非 SIP 全市场汇总）· 抓取间隔按配置执行 · 交易日按 NYSE 常规假日规则估算'
+          :'数据源：Yahoo Finance（非官方接口，延迟约 1～3 分钟）· 抓取间隔按配置执行 · 交易日按 NYSE 常规假日规则估算';
       }
     }catch(error){}
     const response=await fetch('data/quotes.json?_='+Date.now(),{cache:'no-store'});
@@ -638,6 +645,7 @@ async function openCfg(){
     ensureSelectedSymbol(); renderDashboard(); syncChartHeader(curSym);
     $('cfgThreshold').value=config.anomaly_threshold_pct;
     $('cfgInterval').value=config.fetch_interval_secs;
+    $('cfgProvider').value=config.market_data_provider||'yahoo';
     const fragment=document.createDocumentFragment();
     config.groups.forEach(group=>fragment.appendChild(makeCfgGroup(group)));
     $('cfgGroups').replaceChildren(fragment); setConfigEditing(true); $('cfgBg').classList.add('open');
@@ -668,7 +676,8 @@ function collectCfgDraft(){
   if(!groups.length)throw new Error('至少需要一个分组');
   if(groups.length>10)throw new Error('最多设置 10 个分组');
   if(total>60)throw new Error('代码总数最多 60 个');
-  return {groups,anomaly_threshold_pct:threshold,fetch_interval_secs:interval};
+  return {groups,anomaly_threshold_pct:threshold,fetch_interval_secs:interval,
+    market_data_provider:$('cfgProvider').value};
 }
 function flattenTickers(groups){
   const map=new Map();
@@ -677,7 +686,7 @@ function flattenTickers(groups){
 }
 function addPreviewLine(text){const line=document.createElement('div');line.className='cfg-preview-line';line.textContent=text;$('cfgPreviewDetails').appendChild(line);}
 function setConfigEditing(enabled){
-  document.querySelectorAll('#cfgGroups input,#cfgGroups button,#cfgThreshold,#cfgInterval,#cfgAdd,#cfgSave').forEach(element=>{element.disabled=!enabled;});
+  document.querySelectorAll('#cfgGroups input,#cfgGroups button,#cfgThreshold,#cfgInterval,#cfgProvider,#cfgAdd,#cfgSave').forEach(element=>{element.disabled=!enabled;});
 }
 function showConfigPreview(draft){
   pendingConfig=draft; const before=flattenTickers(originalConfig.groups), after=flattenTickers(draft.groups);
@@ -688,10 +697,11 @@ function showConfigPreview(draft){
   addPreviewLine('将保存 '+after.size+' 个代码、'+draft.groups.length+' 个分组。');
   if(draft.anomaly_threshold_pct!==originalConfig.anomaly_threshold_pct)addPreviewLine('异动阈值：'+originalConfig.anomaly_threshold_pct+'% → '+draft.anomaly_threshold_pct+'%');
   if(draft.fetch_interval_secs!==originalConfig.fetch_interval_secs)addPreviewLine('抓取间隔：'+originalConfig.fetch_interval_secs+' 秒 → '+draft.fetch_interval_secs+' 秒');
+  if(draft.market_data_provider!==originalConfig.market_data_provider)addPreviewLine('行情数据源：'+(originalConfig.market_data_provider==='alpaca_iex'?'Alpaca IEX':'Yahoo Finance')+' → '+(draft.market_data_provider==='alpaca_iex'?'Alpaca IEX':'Yahoo Finance'));
   if(added.length)addPreviewLine('新增：'+added.join('、'));
   if(removed.length)addPreviewLine('移除：'+removed.join('、'));
   if(changed.length)addPreviewLine('名称或分组变更：'+changed.map(symbol=>symbol+'（'+before.get(symbol).group+' → '+after.get(symbol).group+'；'+before.get(symbol).name+' → '+after.get(symbol).name+'）').join('；'));
-  if(!added.length&&!removed.length&&!changed.length&&draft.anomaly_threshold_pct===originalConfig.anomaly_threshold_pct&&draft.fetch_interval_secs===originalConfig.fetch_interval_secs)addPreviewLine('与当前配置相同，没有内容变更。');
+  if(!added.length&&!removed.length&&!changed.length&&draft.anomaly_threshold_pct===originalConfig.anomaly_threshold_pct&&draft.fetch_interval_secs===originalConfig.fetch_interval_secs&&draft.market_data_provider===originalConfig.market_data_provider)addPreviewLine('与当前配置相同，没有内容变更。');
   $('cfgPreview').hidden=false; setConfigEditing(false);
 }
 function setConfigNotice(text,kind='info'){
@@ -734,7 +744,12 @@ async function saveConfig(){
     configuredGroups=pendingConfig.groups;
     ensureSelectedSymbol(); renderDashboard(); syncChartHeader(curSym);
     $('thr').value=pendingConfig.anomaly_threshold_pct;
-    if(result.groups_changed){
+    if(result.provider_changed){
+      klCache.clear();
+      const note='行情数据源已切换，后台正在按新数据源更新；Alpaca IEX 不包含非美股或指数的 SIP 汇总数据。';
+      message.textContent=note; message.className='cfg-msg ok'; setConfigNotice(note,'ok');
+      refresh(); setTimeout(closeCfg,900);
+    }else if(result.groups_changed){
       const count=pendingConfig.groups.reduce((sum,group)=>sum+group.tickers.length,0);
       const pendingMessage='配置已保存，正在获取 '+count+' 个代码的新行情…';
       message.textContent=pendingMessage; message.className='cfg-msg'; setConfigNotice(pendingMessage);
